@@ -1,6 +1,8 @@
 使用 gin.New()，完全自定义中间件
 
 ## Recovery: 最外层，捕获所有的 panic
+并将panic传出的错误信息 以及堆栈内信息进行打印 做进一步错误判断
+
 
 ## Logging: 一次请求生成一个 Request ID，可以通过此 ID 追踪所有日志
 
