@@ -33,7 +33,16 @@ type MysqlConfig struct {
 	DataBase string `yaml:"database"`
 }
 
-// 配置文件初始化
+// SerialString 返回服务信息的序列化字符串
+func (sc ServerConfig) SerialString() string {
+	return fmt.Sprintf("%s:%d", sc.Host, sc.Port)
+}
+
+// DsnString 返回 DSN 信息的序列化字符串
+func (mc MysqlConfig) DsnString() string {
+	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local", mc.User, mc.Pass, mc.Host, mc.Port, mc.DataBase)
+}
+
 func init() {
 	var err error
 	GlobalConfig, err = loadConfig("configs/config.yaml")
@@ -44,7 +53,6 @@ func init() {
 	log.Println("[INFO] Config loaded successfully")
 }
 
-// 解析配置文件
 func loadConfig(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -58,14 +66,4 @@ func loadConfig(path string) (*Config, error) {
 	}
 
 	return &config, nil
-}
-
-// SerialString 返回服务信息的序列化字符串
-func (sc ServerConfig) SerialString() string {
-	return fmt.Sprintf("%s:%d", sc.Host, sc.Port)
-}
-
-// DsnString 返回 DSN 信息的序列化字符串
-func (mc MysqlConfig) DsnString() string {
-	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local", mc.User, mc.Pass, mc.Host, mc.Port, mc.DataBase)
 }
