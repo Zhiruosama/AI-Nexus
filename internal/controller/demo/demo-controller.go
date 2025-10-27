@@ -4,16 +4,16 @@ import (
 	"net/http"
 	"strconv"
 
-	dquery "github.com/Zhiruosama/ai_nexus/internal/domain/query/demo"
-	"github.com/Zhiruosama/ai_nexus/internal/service/demo"
+	demo_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/demo"
+	demo_service "github.com/Zhiruosama/ai_nexus/internal/service/demo"
 	"github.com/gin-gonic/gin"
 )
 
 type DemoController struct {
-	demoService *demo.DemoService
+	demoService *demo_service.DemoService
 }
 
-func NewDemoController(ds *demo.DemoService) *DemoController {
+func NewDemoController(ds *demo_service.DemoService) *DemoController {
 	return &DemoController{
 		demoService: ds,
 	}
@@ -23,7 +23,7 @@ func (dc *DemoController) GetMessageById(c *gin.Context) {
 	idStr := c.DefaultQuery("id", "1")
 	id, _ := strconv.Atoi(idStr)
 
-	demoQuery := &dquery.DemoQuery{
+	demoQuery := &demo_query.DemoQuery{
 		Id: id,
 	}
 

@@ -1,3 +1,10 @@
 server:
   host: 127.0.0.1
   port: 9000
+
+mysql:
+  host: 8.154.30.80
+  port: 3306
+  user: ainexus
+  pass: 845924
+  database: ai_nexus

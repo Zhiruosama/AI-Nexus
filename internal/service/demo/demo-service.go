@@ -3,30 +3,30 @@ package demo
 import (
 	"log"
 
-	demoDAO "github.com/Zhiruosama/ai_nexus/internal/dao/demo"
-	dquery "github.com/Zhiruosama/ai_nexus/internal/domain/query/demo"
-	demoVO "github.com/Zhiruosama/ai_nexus/internal/domain/vo/demo"
+	demo_dao "github.com/Zhiruosama/ai_nexus/internal/dao/demo"
+	demo_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/demo"
+	demo_vo "github.com/Zhiruosama/ai_nexus/internal/domain/vo/demo"
 )
 
 type DemoService struct {
-	DemoDao *demoDAO.DemoDAO
+	DemoDao *demo_dao.DemoDAO
 }
 
 func NewDemoService() *DemoService {
 	return &DemoService{
-		DemoDao: &demoDAO.DemoDAO{},
+		DemoDao: &demo_dao.DemoDAO{},
 	}
 }
 
-func (ds *DemoService) GetMessageById(dqu *dquery.DemoQuery) (demoVO.DemoVO, error) {
+func (ds *DemoService) GetMessageById(dqu *demo_query.DemoQuery) (demo_vo.DemoVO, error) {
 	demoDO, err := ds.DemoDao.GetMessageById(dqu.Id)
 
 	if err != nil {
 		log.Fatalln("[ERROR] GetMessageById in sql error:", err.Error())
-		return demoVO.DemoVO{}, err
+		return demo_vo.DemoVO{}, err
 	}
 
-	demoVo := demoVO.DemoVO{
+	demoVo := demo_vo.DemoVO{
 		Id:      demoDO.Id,
 		Message: demoDO.Message,
 	}
