@@ -1,20 +1,19 @@
+// Package demo 提供演示相关的路由配置
 package demo
 
 import (
-	dC "github.com/Zhiruosama/ai_nexus/internal/controller/demo"
-	dS "github.com/Zhiruosama/ai_nexus/internal/service/demo"
+	demo_controller "github.com/Zhiruosama/ai_nexus/internal/controller/demo"
+	demo_service "github.com/Zhiruosama/ai_nexus/internal/service/demo"
 	"github.com/gin-gonic/gin"
 )
 
+// InitDemoRoutes 初始化演示模块的路由
 func InitDemoRoutes(r *gin.Engine) {
-	ds := dS.NewDemoService()
-	dc := dC.NewDemoController(ds)
+	ds := demo_service.NewService()
+	dc := demo_controller.NewController(ds)
 
 	demo := r.Group("/demo")
-	demo.Use(func(ctx *gin.Context) {
-		ctx.Writer.WriteString("Begin demo")
-	})
 	{
-		demo.GET("/get-message", dc.GetMessageById)
+		demo.GET("/get-message", dc.GetMessageByID)
 	}
 }

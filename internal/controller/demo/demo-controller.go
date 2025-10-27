@@ -1,37 +1,41 @@
+// Package demo 是 demo 模块的 controller 部分，集中书写所有回调
 package demo
 
 import (
 	"net/http"
 	"strconv"
 
-	dquery "github.com/Zhiruosama/ai_nexus/internal/domain/query/demo"
-	"github.com/Zhiruosama/ai_nexus/internal/service/demo"
+	demo_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/demo"
+	demo_service "github.com/Zhiruosama/ai_nexus/internal/service/demo"
 	"github.com/gin-gonic/gin"
 )
 
-type DemoController struct {
-	demoService *demo.DemoService
+// Controller 对应 Controller 结构，有一个 Service 成员
+type Controller struct {
+	demoService *demo_service.Service
 }
 
-func NewDemoController(ds *demo.DemoService) *DemoController {
-	return &DemoController{
+// NewController 对应 Controller 的工厂方法
+func NewController(ds *demo_service.Service) *Controller {
+	return &Controller{
 		demoService: ds,
 	}
 }
 
-func (dc *DemoController) GetMessageById(c *gin.Context) {
-	idStr := c.DefaultQuery("id", "1")
+// GetMessageByID 通过 ID 查询 test 表的对应 message
+func (c *Controller) GetMessageByID(ctx *gin.Context) {
+	idStr := ctx.DefaultQuery("id", "1")
 	id, _ := strconv.Atoi(idStr)
 
-	demoQuery := &dquery.DemoQuery{
-		Id: id,
+	demoQuery := &demo_query.GetMessageByIDQuery{
+		ID: id,
 	}
 
-	result, err := dc.demoService.GetMessageById(demoQuery)
+	result, err := c.demoService.GetMessageByID(demoQuery)
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
+		ctx.JSON(http.StatusServiceUnavailable, gin.H{
 			"message": "This user doesn't exists",
 		})
 	}
-	c.JSON(http.StatusOK, result)
+	ctx.JSON(http.StatusOK, result)
 }

@@ -1,33 +1,37 @@
+// Package demo 是 demo 模块的 service 部分，书写业务处理
 package demo
 
 import (
 	"log"
 
-	demoDAO "github.com/Zhiruosama/ai_nexus/internal/dao/demo"
-	dquery "github.com/Zhiruosama/ai_nexus/internal/domain/query/demo"
-	demoVO "github.com/Zhiruosama/ai_nexus/internal/domain/vo/demo"
+	demo_dao "github.com/Zhiruosama/ai_nexus/internal/dao/demo"
+	demo_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/demo"
+	demo_vo "github.com/Zhiruosama/ai_nexus/internal/domain/vo/demo"
 )
 
-type DemoService struct {
-	DemoDao *demoDAO.DemoDAO
+// Service 对应 demo 模块的 Service 结构
+type Service struct {
+	DemoDao *demo_dao.DAO
 }
 
-func NewDemoService() *DemoService {
-	return &DemoService{
-		DemoDao: &demoDAO.DemoDAO{},
+// NewService 对应 demo 模块的 Service 工厂方法
+func NewService() *Service {
+	return &Service{
+		DemoDao: &demo_dao.DAO{},
 	}
 }
 
-func (ds *DemoService) GetMessageById(dqu *dquery.DemoQuery) (demoVO.DemoVO, error) {
-	demoDO, err := ds.DemoDao.GetMessageById(dqu.Id)
+// GetMessageByID 对应 Service 的处理
+func (ds *Service) GetMessageByID(dqu *demo_query.GetMessageByIDQuery) (demo_vo.GetMessageByIDVO, error) {
+	demoDO, err := ds.DemoDao.GetMessageByID(dqu.ID)
 
 	if err != nil {
 		log.Fatalln("[ERROR] GetMessageById in sql error:", err.Error())
-		return demoVO.DemoVO{}, err
+		return demo_vo.GetMessageByIDVO{}, err
 	}
 
-	demoVo := demoVO.DemoVO{
-		Id:      demoDO.Id,
+	demoVo := demo_vo.GetMessageByIDVO{
+		ID:      demoDO.ID,
 		Message: demoDO.Message,
 	}
 	return demoVo, nil

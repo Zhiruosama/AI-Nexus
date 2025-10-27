@@ -1,22 +1,14 @@
-linters-settings:
-  golint:
-    min-confidence: 0
-  misspell:
-    locale: US
+version: '2'
 
 linters:
-  disable-all: true
   enable:
-    - typecheck
-    - goimports
-    - misspell
-    - govet
-    - golint
-    - ineffassign
-    - gosimple
-    - deadcode
-    - structcheck
-    - unused
-    - errcheck
-service:
-  golangci-lint-version: 1.59.1
+    - govet          # Go 官方检查工具
+    - revive         # golint 的替代品
+    - ineffassign    # 检测无效赋值
+    - unused         # 检测未使用的代码
+    - errcheck       # 检查错误处理
+    - staticcheck    # 静态分析（包含 gosimple）
+    - misspell       # 拼写检查
+
+run:
+  timeout: 5m

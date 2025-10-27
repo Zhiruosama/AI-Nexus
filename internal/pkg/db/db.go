@@ -1,3 +1,4 @@
+// Package db 数据库初始模块
 package db
 
 import (
@@ -8,20 +9,12 @@ import (
 	"gorm.io/gorm"
 )
 
+// GlobalDB 全局的 Mysql 实例
 var GlobalDB *gorm.DB
 
+// mysql 初始化
 func init() {
-	var mysqlDataBase configs.MysqlDataBase = configs.MysqlDataBase{
-		MysqlConfig: configs.MysqlConfig{
-			Host: "127.0.0.1",
-			Port: 3306,
-			User: "ainexus",
-			Pass: "845924",
-		},
-		DataBase: "ai_nexus",
-	}
-
-	dsn := mysqlDataBase.DsnString()
+	dsn := configs.GlobalConfig.MySQL.DsnString()
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
