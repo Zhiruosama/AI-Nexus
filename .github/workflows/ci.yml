@@ -43,7 +43,7 @@ jobs:
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.5.0
-          args: run --timeout=5m --max-issues-per-linter=0 --max-same-issues=0
+          args: --timeout=5m --max-issues-per-linter=0 --max-same-issues=0
 
       - name: Build
         run: go build -v ./...
