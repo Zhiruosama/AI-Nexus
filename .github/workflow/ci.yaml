@@ -1,0 +1,54 @@
+# 文件名: .github/workflows/ci.yml
+
+name: Go CI Workflow
+
+# 触发条件：在 push 到 main 分支或发起 Pull Request 时触发
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+# 定义一个工作 (job)
+jobs:
+  build-and-test:
+    name: Build & Test on Go ${{ matrix.go-version }}
+    # 在最新的 Ubuntu 环境中运行这个 job
+    runs-on: ubuntu-latest
+
+    # 定义测试矩阵，可以同时测试多个 Go 版本
+    strategy:
+      matrix:
+        go-version: [ '1.21', '1.22' ]
+
+    steps:
+      - name: Checkout code
+        # 使用官方 action 检出仓库代码
+        uses: actions/checkout@v4
+
+      - name: Setup Go environment
+        # 使用官方 action 设置 Go 环境
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+
+      - name: Install Dependencies
+        # 下载项目依赖
+        run: go mod tidy
+
+      # --- 代码静态分析和 Linting ---
+      - name: Run GolangCI-Lint
+        # 执行 Lint 检查
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.32.2
+          export PATH=$PATH:$(go env GOPATH)/bin
+          golangci-lint run ./... --timeout 5m
+
+      - name: Run unit tests
+        # 使用 -v 打印详细信息，-race 启用竞态条件检测，-cover 启用代码覆盖率
+        run: go test -v -race ./...
