@@ -1,3 +1,4 @@
+// Package main 应用的入口点，初始化 Config 和 DB 配置
 package main
 
 import (

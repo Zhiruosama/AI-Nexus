@@ -1,3 +1,4 @@
+// Package db 数据库初始模块
 package db
 
 import (
@@ -8,8 +9,10 @@ import (
 	"gorm.io/gorm"
 )
 
+// GlobalDB 全局的 Mysql 实例
 var GlobalDB *gorm.DB
 
+// mysql 初始化
 func init() {
 	dsn := configs.GlobalConfig.MySQL.DsnString()
 

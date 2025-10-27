@@ -1,3 +1,4 @@
+// Package configs 提供配置文件的统一入口,读取 yaml 文件以及提供序列化操作
 package configs
 
 import (
@@ -8,18 +9,22 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
+// GlobalConfig 是配置文件的全局唯一实例
 var GlobalConfig *Config
 
+// Config 定义统一配置文件结构
 type Config struct {
 	Server ServerConfig `yaml:"server"`
 	MySQL  MysqlConfig  `yaml:"mysql"`
 }
 
+// ServerConfig 定义主服务配置
 type ServerConfig struct {
 	Host string `yaml:"host"`
 	Port int    `yaml:"port"`
 }
 
+// MysqlConfig 定义 Mysql 相关配置
 type MysqlConfig struct {
 	Host     string `yaml:"host"`
 	Port     int    `yaml:"port"`
@@ -55,12 +60,12 @@ func loadConfig(path string) (*Config, error) {
 	return &config, nil
 }
 
-// 服务信息序列字符串
+// SerialString 返回服务信息的序列化字符串
 func (sc ServerConfig) SerialString() string {
 	return fmt.Sprintf("%s:%d", sc.Host, sc.Port)
 }
 
-// dsn信息序列化
+// DsnString 返回 DSN 信息的序列化字符串
 func (mc MysqlConfig) DsnString() string {
 	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local", mc.User, mc.Pass, mc.Host, mc.Port, mc.DataBase)
 }

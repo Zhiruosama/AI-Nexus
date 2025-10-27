@@ -9,14 +9,11 @@ import (
 
 // InitDemoRoutes 初始化演示模块的路由
 func InitDemoRoutes(r *gin.Engine) {
-	ds := demo_service.NewDemoService()
-	dc := demo_controller.NewDemoController(ds)
+	ds := demo_service.NewService()
+	dc := demo_controller.NewController(ds)
 
 	demo := r.Group("/demo")
-	demo.Use(func(ctx *gin.Context) {
-		_, _ = ctx.Writer.WriteString("Begin demo")
-	})
 	{
-		demo.GET("/get-message", dc.GetMessageById)
+		demo.GET("/get-message", dc.GetMessageByID)
 	}
 }
