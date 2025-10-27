@@ -40,7 +40,7 @@ jobs:
           fi
 
       - name: Run GolangCI-Lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
           version: v2.5.0
           args: run --timeout=5m --max-issues-per-linter=0 --max-same-issues=0
