@@ -8,3 +8,18 @@ mysql:
   user: ainexus
   pass: 845924
   database: ai_nexus
+
+redis:
+  addr: 127.0.0.1:6379
+  password: ""
+  db: 0
+
+ratelimit:
+  limitmax: 1000
+  window: 1m
+
+idempotency:
+  lockduration: 5m
+
+deduplication:
+  lockduration: 5s
