@@ -1,4 +1,4 @@
-// Redis初始化模块
+// Package rdb Redis初始化模块
 package rdb
 
 import (
@@ -10,10 +10,13 @@ import (
 )
 
 var (
+	// Rdb 是用于管理 Redis 数据库连接的客户端实例。
 	Rdb *redis.Client
+	// Ctx 是一个空的根 Context 用于需要默认 Context 的地方
 	Ctx = context.Background()
 )
 
+// Init 对数据库实例进行初始化
 func Init() {
 	cfg := configs.GlobalConfig.Redis
 

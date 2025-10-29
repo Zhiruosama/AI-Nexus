@@ -3,7 +3,7 @@ package middleware
 
 import "github.com/gin-gonic/gin"
 
-// 中间件核心逻辑实现
+// SecurityHeaders 中间件核心逻辑实现
 func SecurityHeaders() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 防止MIME类型嗅探

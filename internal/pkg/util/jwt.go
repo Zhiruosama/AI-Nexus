@@ -1,3 +1,4 @@
+// // Package util 此处为JWT相关工具
 package util
 
 import (
@@ -9,7 +10,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// 定义JWT密钥 从环境变量中加载)
+// jwtSecret 定义JWT密钥 从环境变量中加载)
 var jwtSecret []byte
 
 // init() 函数在包被导入时执行
@@ -34,8 +35,8 @@ func getSecretKey() []byte {
 	return jwtSecret
 }
 
-// GenerateToken用于生成JWT Token
 // 参数 userID 要包含在Token中的用户ID
+// GenerateToken 用于生成JWT Token
 func GenerateToken(userID uint) (string, error) {
 	expirationTime := time.Now().Add(time.Hour * 24 * 7)
 

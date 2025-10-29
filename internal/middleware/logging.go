@@ -6,10 +6,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// RequestIDKey
+// RequestIDKey 是用于在 Context 中存储请求 ID 的键
 const RequestIDKey = "X-Request-ID"
 
-// Logging负责为每个请求生成或提取唯一的 Request ID
+// Logging 负责为每个请求生成或提取唯一的 Request ID
 func Logging() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var requestID string

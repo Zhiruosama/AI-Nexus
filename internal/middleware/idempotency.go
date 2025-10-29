@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// IdempotencyMiddleware 幂等设计中间件核心实现
 func IdempotencyMiddleware() gin.HandlerFunc {
 	//获取Redis客户端跟context
 	rdbClient := rdb.Rdb
