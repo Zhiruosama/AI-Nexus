@@ -1,5 +1,5 @@
-// // Package util 此处为JWT相关工具
-package util
+// Package jwtauth 此处为JWT相关工具
+package jwtauth
 
 import (
 	"errors"
@@ -35,8 +35,8 @@ func getSecretKey() []byte {
 	return jwtSecret
 }
 
-// 参数 userID 要包含在Token中的用户ID
-// GenerateToken 用于生成JWT Token
+// GenerateToken 用于生成 JWT Token。
+// 参数 userID 要包含在 Token 中的用户 ID。
 func GenerateToken(userID uint) (string, error) {
 	expirationTime := time.Now().Add(time.Hour * 24 * 7)
 

@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 中间件具体实现
+// RateLimitingMiddleware 中间件具体实现
 func RateLimitingMiddleware() gin.HandlerFunc {
 	// 读取配置参数
 	maxRequests := configs.GlobalConfig.RateLimit.LimitMax
