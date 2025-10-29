@@ -5,6 +5,7 @@ import (
 	_ "github.com/Zhiruosama/ai_nexus/configs"
 	app "github.com/Zhiruosama/ai_nexus/internal"
 	_ "github.com/Zhiruosama/ai_nexus/internal/pkg/db"
+	_ "github.com/Zhiruosama/ai_nexus/internal/pkg/rdb"
 )
 
 func main() {

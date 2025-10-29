@@ -79,7 +79,6 @@ func init() {
 		log.Fatalln("[ERROR] Failed to load config:", err.Error())
 	}
 	log.Println("[INFO] Config loaded successfully")
-
 }
 
 func loadConfig(path string) (*Config, error) {

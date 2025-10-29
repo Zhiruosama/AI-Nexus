@@ -1,5 +1,5 @@
 server:
-  host: 127.0.0.1
+  host: 0.0.0.0
   port: 9000
 
 mysql:
@@ -11,15 +11,12 @@ mysql:
 
 redis:
   addr: 127.0.0.1:6379
-  password: ""
+  password: 845924
   db: 0
 
 ratelimit:
-  limitmax: 1000
+  limitmax: 100
   window: 1m
-
-idempotency:
-  lockduration: 5m
 
 deduplication:
   lockduration: 5s

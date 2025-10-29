@@ -3,7 +3,7 @@ package rdb
 
 import (
 	"context"
-	"log"
+	"fmt"
 
 	"github.com/Zhiruosama/ai_nexus/configs"
 	"github.com/redis/go-redis/v9"
@@ -14,7 +14,7 @@ var (
 	Ctx = context.Background()
 )
 
-func Init() {
+func init() {
 	cfg := configs.GlobalConfig.Redis
 
 	Rdb = redis.NewClient(&redis.Options{
@@ -24,7 +24,7 @@ func Init() {
 	})
 
 	if err := Rdb.Ping(Ctx).Err(); err != nil {
-		log.Fatalf("Redis连接失败: %v", err)
+		panic(fmt.Sprintf("[ERROR] Redis init error, err is: %s", err.Error()))
 	}
-	log.Println("Redis连接成功")
+	fmt.Println("Redis connect success")
 }

@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/Zhiruosama/ai_nexus/configs"
+	"github.com/Zhiruosama/ai_nexus/internal/middleware"
 	routes_demo "github.com/Zhiruosama/ai_nexus/internal/routes/demo"
 	"github.com/gin-gonic/gin"
 )
@@ -13,7 +14,14 @@ import (
 func Run() {
 	// 初始化路由引擎
 	gin.SetMode(gin.ReleaseMode)
-	route := gin.Default()
+	route := gin.New()
+
+	// 注册全局中间件
+	route.Use(middleware.Recovery())
+	route.Use(gin.Logger())
+	route.Use(middleware.RequestID())
+	route.Use(middleware.SecurityHeaders())
+	route.Use(middleware.CORS(middleware.DefaultCORSConfig()))
 
 	// 注册路由
 	routes_demo.InitDemoRoutes(route)

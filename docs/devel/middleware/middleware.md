@@ -9,12 +9,12 @@
 
 ## Security Headers: 添加安全头，防止跨域攻击
 
+## Authentication (JWT): 验证用户身份
+将JWT密钥写到环境变量里
+
 ## Rate Limiting / Idempotency / Deduplication: 在执行核心逻辑前进行流量控制、(多个请求只产生一次影响)（POST）幂等设计redis、重复请求判断(GET DELET PUT)
 流量控制：
 单次最多请求次数config limitmax
 redis记录 key是用户 记录请求次数
-
-## Authentication (JWT): 验证用户身份
-将JWT密钥写到环境变量里
 
 ## Request Validation: 校验请求数据，正式进入 Controller 层

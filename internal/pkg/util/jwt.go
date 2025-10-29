@@ -1,23 +1,20 @@
 package util
 
 import (
-	"errors"
-	"fmt"
 	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// 定义JWT密钥 从环境变量中加载)
+// 定义JWT密钥 从环境变量中加载
 var jwtSecret []byte
 
-// init() 函数在包被导入时执行
 func init() {
 	secret := os.Getenv("JWT_SECRET")
 
 	if secret == "" {
-		fmt.Println("[ERROR]环境变量JWT_SECRET未设置")
+		panic("[ERROR] JWT_SECRET not set")
 	} else {
 		jwtSecret = []byte(secret)
 	}
@@ -25,18 +22,12 @@ func init() {
 
 // Claims 定义了 JWT Payload中包含的而信息
 type Claims struct {
-	UserID uint `json:"user_id"`
+	UserID string `json:"user_id"`
 	jwt.RegisteredClaims
 }
 
-// getSecretKey 返回JWT密钥
-func getSecretKey() []byte {
-	return jwtSecret
-}
-
-// GenerateToken用于生成JWT Token
-// 参数 userID 要包含在Token中的用户ID
-func GenerateToken(userID uint) (string, error) {
+// GenerateToken 用于生成 JWT Token
+func GenerateToken(userID string) (string, error) {
 	expirationTime := time.Now().Add(time.Hour * 24 * 7)
 
 	claims := Claims{
@@ -49,8 +40,7 @@ func GenerateToken(userID uint) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	// 使用getSecretKey获取密钥
-	tokenString, err := token.SignedString(getSecretKey())
+	tokenString, err := token.SignedString(jwtSecret)
 
 	return tokenString, err
 }
@@ -59,23 +49,19 @@ func GenerateToken(userID uint) (string, error) {
 func ParseToken(tokenString string) (*Claims, error) {
 	claims := &Claims{}
 
-	//解析Token 同时验证签名
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		// 确保签名方法是HMAC
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			return nil, jwt.ErrSignatureInvalid
 		}
-		return jwtSecret, nil //返回密钥 用于验证签名
+		return jwtSecret, nil
 	})
 
-	// 检查是否有解析错误
 	if err != nil {
 		return nil, err
 	}
 
-	// 检查Token是否过期
 	if !token.Valid {
-		return nil, errors.New("token is invalid")
+		return nil, jwt.ErrTokenExpired
 	}
 
 	return claims, nil

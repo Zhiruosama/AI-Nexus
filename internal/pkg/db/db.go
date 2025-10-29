@@ -2,7 +2,7 @@
 package db
 
 import (
-	"log"
+	"fmt"
 
 	"github.com/Zhiruosama/ai_nexus/configs"
 	"gorm.io/driver/mysql"
@@ -18,8 +18,9 @@ func init() {
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalln("[ERROR] DBinit error, err is:", err.Error())
+		panic(fmt.Sprintf("[ERROR] DBinit error, err is: %s", err.Error()))
 	}
 
 	GlobalDB = db
+	fmt.Println("Mysql connect success")
 }
