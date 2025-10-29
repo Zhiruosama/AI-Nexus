@@ -13,7 +13,7 @@ const RequestIDKey = "X-RequeRst-ID"
 func RequestID() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
-		var requestID string = uuid.New().String()
+		var requestID = uuid.New().String()
 		c.Set(RequestIDKey, requestID)
 		c.Next()
 	}

@@ -88,7 +88,11 @@ func writeErrorLog(log PanicLog) {
 		fmt.Fprintf(os.Stderr, "[RECOVERY] Failed to open log file: %v\n", err)
 		return
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			fmt.Fprintf(os.Stderr, "[RECOVERY] Failed to close log file: %v\n", closeErr)
+		}
+	}()
 
 	logBytes, err := json.Marshal(log)
 	if err != nil {

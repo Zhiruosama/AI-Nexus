@@ -1,4 +1,4 @@
-// 自定义错误码
+// Package middleware 自定义错误码
 package middleware
 
 const (
