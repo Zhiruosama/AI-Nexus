@@ -1,4 +1,4 @@
-// Recovery中间件 用于捕获全局的panic
+// Package middleware Recovery 中间件 用于捕获全局的panic
 package middleware
 
 import (

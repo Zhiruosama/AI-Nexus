@@ -1,4 +1,4 @@
-// 重复请求判断中间件
+// Package middleware deduplication 重复请求判断中间件
 package middleware
 
 import (

@@ -1,4 +1,4 @@
-// 流量控制中间件
+// Package middleware Ratelimiting 流量控制中间件
 package middleware
 
 import (

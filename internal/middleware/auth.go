@@ -1,4 +1,4 @@
-// JWT认证中间件
+// Package middleware JWT 认证中间件。
 package middleware
 
 import (
@@ -11,7 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// 创建一个用于验证 JWT Token 的 Gin 中间件
+// AuthMiddleware 创建一个用于验证 JWT Token 的 Gin 中间件
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		//从请求头里获取Authorization

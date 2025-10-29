@@ -1,4 +1,4 @@
-// Logging中间件的实现
+// Package middleware Logging 中间件的实现
 package middleware
 
 import (

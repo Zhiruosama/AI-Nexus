@@ -1,4 +1,4 @@
-// 幂等设计中间件
+// Package middleware Idempotency 幂等设计中间件
 package middleware
 
 import (

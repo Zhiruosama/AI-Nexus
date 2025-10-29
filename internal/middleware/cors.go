@@ -1,4 +1,4 @@
-// CORS中间件 用于处理跨域问题
+// Package middleware CORS 中间件用于处理跨域问题
 package middleware
 
 import (
@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CORSConfig定义CORS中间件的配置结构体
+// CORSConfig 定义CORS中间件的配置结构体
 type CORSconfig struct {
 	// AllowedOrigins 定义了允许访问资源的域列表，例如 ["http://localhost:3000", "https://app.example.com"]
 	// 使用"*"表示允许所有域访问
@@ -32,7 +32,7 @@ type CORSconfig struct {
 	MaxAge time.Duration
 }
 
-// 返回一个默认配置
+// DefaultCORSConfig 返回一个默认配置
 func DefaultCORSConfig() CORSconfig {
 	return CORSconfig{
 		AllowedOrigins:   []string{"*"},

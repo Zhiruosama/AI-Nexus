@@ -1,4 +1,4 @@
-// 添加安全用HTTP响应头中间件
+// Package middleware SecurityHeaders 添加安全用HTTP响应头中间件
 package middleware
 
 import "github.com/gin-gonic/gin"
