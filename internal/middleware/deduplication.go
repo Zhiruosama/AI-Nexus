@@ -1,4 +1,4 @@
-// 重复请求判断中间件
+// Package middleware 重复请求判断中间件
 package middleware
 
 import (
@@ -14,7 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 中间件具体实现
+// DeduplicationMiddleware 中间件具体实现
 func DeduplicationMiddleware() gin.HandlerFunc {
 	rdbClient := rdb.Rdb
 	ctx := rdb.Ctx

@@ -1,4 +1,4 @@
-// 流量控制中间件
+// Package middleware 流量控制中间件
 package middleware
 
 import (
@@ -13,7 +13,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// 中间件具体实现
+// RateLimitingMiddleware 中间件具体实现
 func RateLimitingMiddleware() gin.HandlerFunc {
 	luaScript, err := os.ReadFile(filepath.Join("middleware", "lua", "rate_limit.lua"))
 	if err != nil {
