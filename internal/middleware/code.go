@@ -2,15 +2,15 @@
 package middleware
 
 const (
-	// 照片生成API限制错误码
-	IMAGE_APILIMIt int = iota + 50000
-	// 照片生成RPC调用错误 错误码
-	IMAGE_RPCERROR
+	// ImageAPILimit 照片生成 API 限制错误码。
+	ImageAPILimit int = iota + 50000
+	// ImageRPCError 照片生成 RPC 调用错误码。
+	ImageRPCError
 )
 
 const (
-	// 视频生成API限制错误码
-	VIDEO_APILIMIT int = iota + 60000
-	// 视频生成RPC调用错误 错误码
-	VIDEO_RPCERROR
+	// VideoAPILimit 视频 API 限制错误码。
+	VideoAPILimit int = iota + 60000
+	// VideoRPCError 视频生成RPC调用错误 错误码
+	VideoRPCError
 )

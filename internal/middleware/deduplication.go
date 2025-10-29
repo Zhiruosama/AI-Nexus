@@ -15,7 +15,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// 中间件具体实现
+// DeduplicationMiddleware 返回一个去重中间件。
 func DeduplicationMiddleware() gin.HandlerFunc {
 	rdbClient := rdb.Rdb
 	ctx := rdb.Ctx

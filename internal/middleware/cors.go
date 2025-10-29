@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CORSConfig 定义CORS中间件的配置结构体
+// CORSconfig 定义CORS中间件的配置结构体
 type CORSconfig struct {
 	// AllowedOrigins 定义了允许访问资源的域列表，例如 ["http://localhost:3000", "https://app.example.com"]
 	// 使用"*"表示允许所有域访问
