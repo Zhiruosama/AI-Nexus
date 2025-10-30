@@ -76,7 +76,7 @@ func init() {
 	GlobalConfig, err = loadConfig("configs/config.yaml")
 
 	if err != nil {
-		log.Fatalln("[ERROR] Failed to load config:", err.Error())
+		panic(fmt.Sprintf("[ERROR] Failed to load config: %s\n", err.Error()))
 	}
 	log.Println("[INFO] Config loaded successfully")
 }
