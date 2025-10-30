@@ -1,1 +1,8 @@
+### demo示例
 GET http://127.0.0.1:9000/demo/get-message?id=2 HTTP/1.1
+
+###
+GET http://127.0.0.1:9000/demo/panic-test HTTP/1.1
+
+### 用户模块
+GET http://127.0.0.1:9000/user/send-code?nickname=zhangsan&email=1512619344@qq.com&password=123456aB&repeat_password=123456aB HTTP/1.1

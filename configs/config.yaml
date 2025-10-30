@@ -20,3 +20,7 @@ ratelimit:
 
 deduplication:
   lockduration: 5s
+
+grpcclient:
+  serveraddress: 127.0.0.1:50002
+  defaulttimeout: 10s

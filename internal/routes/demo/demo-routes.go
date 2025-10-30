@@ -15,5 +15,6 @@ func InitDemoRoutes(r *gin.Engine) {
 	demo := r.Group("/demo")
 	{
 		demo.GET("/get-message", dc.GetMessageByID)
+		demo.GET("/panic-test", dc.PanicTest)
 	}
 }
