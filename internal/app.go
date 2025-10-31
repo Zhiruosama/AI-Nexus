@@ -7,6 +7,7 @@ import (
 	"github.com/Zhiruosama/ai_nexus/configs"
 	"github.com/Zhiruosama/ai_nexus/internal/middleware"
 	routes_demo "github.com/Zhiruosama/ai_nexus/internal/routes/demo"
+	routes_user "github.com/Zhiruosama/ai_nexus/internal/routes/user"
 	"github.com/gin-gonic/gin"
 )
 
@@ -23,8 +24,12 @@ func Run() {
 	route.Use(middleware.SecurityHeaders())
 	route.Use(middleware.CORS(middleware.DefaultCORSConfig()))
 
+	// 静态目录
+	route.Static("/static", "./static")
+
 	// 注册路由
 	routes_demo.InitDemoRoutes(route)
+	routes_user.InitUserRoutes(route)
 
 	// 启动 app
 	log.Printf("[INFO] Server start on: %s:%d", configs.GlobalConfig.Server.Host, configs.GlobalConfig.Server.Port)

@@ -1,4 +1,4 @@
-// Redis初始化模块
+// Package rdb Redis初始化模块
 package rdb
 
 import (
@@ -10,7 +10,9 @@ import (
 )
 
 var (
+	// Rdb Redis客户端实例
 	Rdb *redis.Client
+	// Ctx 上下文
 	Ctx = context.Background()
 )
 

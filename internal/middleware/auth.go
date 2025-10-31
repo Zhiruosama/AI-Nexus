@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Zhiruosama/ai_nexus/internal/pkg/util"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -35,7 +34,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		tokenString := parts[1]
 
 		// 解析验证Token
-		claims, err := util.ParseToken(tokenString)
+		claims, err := ParseToken(tokenString)
 
 		if err != nil {
 			if errors.Is(err, jwt.ErrSignatureInvalid) || errors.Is(err, jwt.ErrTokenExpired) {

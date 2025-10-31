@@ -1,4 +1,5 @@
-package util
+// Package middleware JWT工具包
+package middleware
 
 import (
 	"os"
@@ -15,9 +16,8 @@ func init() {
 
 	if secret == "" {
 		panic("[ERROR] JWT_SECRET not set")
-	} else {
-		jwtSecret = []byte(secret)
 	}
+	jwtSecret = []byte(secret)
 }
 
 // Claims 定义了 JWT Payload中包含的而信息

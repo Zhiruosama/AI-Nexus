@@ -2,8 +2,10 @@
 package demo
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	demo_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/demo"
 	demo_service "github.com/Zhiruosama/ai_nexus/internal/service/demo"
@@ -38,4 +40,11 @@ func (c *Controller) GetMessageByID(ctx *gin.Context) {
 		})
 	}
 	ctx.JSON(http.StatusOK, result)
+}
+
+// PanicTest 测试Panic
+func (c *Controller) PanicTest(_ *gin.Context) {
+	fmt.Println("begin panic")
+	time.Sleep(time.Second * 2)
+	panic("Some error start in PanicTest")
 }

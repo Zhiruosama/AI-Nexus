@@ -21,6 +21,7 @@ type Config struct {
 	RateLimit     RateLimitConfig     `yaml:"ratelimit"`
 	Idempotency   IdempotencyConfig   `yaml:"idempotency"`
 	Deduplication DeduplicationConfig `yaml:"deduplication"`
+	GRPCClient    GRPCClientConfig    `yaml:"grpcclient"`
 }
 
 // ServerConfig 定义主服务配置
@@ -61,6 +62,12 @@ type DeduplicationConfig struct {
 	LockDuration time.Duration `yaml:"locakduration"`
 }
 
+// GRPCClientConfig 结构体用于配置gRPC连接
+type GRPCClientConfig struct {
+	ServerAddress  string        `yaml:"serveraddress"`
+	DefaultTimeout time.Duration `yaml:"defaulttimeout"`
+}
+
 // SerialString 返回服务信息的序列化字符串
 func (sc ServerConfig) SerialString() string {
 	return fmt.Sprintf("%s:%d", sc.Host, sc.Port)
@@ -76,7 +83,7 @@ func init() {
 	GlobalConfig, err = loadConfig("configs/config.yaml")
 
 	if err != nil {
-		log.Fatalln("[ERROR] Failed to load config:", err.Error())
+		panic(fmt.Sprintf("[ERROR] Failed to load config: %s\n", err.Error()))
 	}
 	log.Println("[INFO] Config loaded successfully")
 }

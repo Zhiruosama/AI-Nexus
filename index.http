@@ -1,1 +1,23 @@
+### demo示例
 GET http://127.0.0.1:9000/demo/get-message?id=2 HTTP/1.1
+
+###
+GET http://127.0.0.1:9000/demo/panic-test HTTP/1.1
+
+### 用户模块
+POST http://127.0.0.1:9000/user/send-code HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+nickname=zhangsan&email=2262317520@qq.com&password=123456aB&repeat_password=123456aB
+
+### 用户注册
+POST http://localhost:9000/user/register HTTP/1.1
+Content-Type: application/json
+
+{
+    "nickname": "chulan",
+    "email": "2262317520@qq.com",
+    "password": "Test123!",
+    "repeat_password": "Test123!",
+    "verify_code": "79e4"
+}

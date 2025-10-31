@@ -16,7 +16,6 @@ import (
 
 var (
 	logFileMutex sync.Mutex
-	logDir       = "./logs"
 	logFilePath  = "./logs/error.log"
 )
 
@@ -38,7 +37,7 @@ type PanicLog struct {
 
 // Recovery 用于捕获所有 panic 并将详细信息落盘
 func Recovery() gin.HandlerFunc {
-	if err := os.MkdirAll(filepath.Dir(logDir), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(logFilePath), 0755); err != nil {
 		fmt.Fprintf(os.Stderr, "[RECOVERY] Failed to create painc dir: %v\n", err)
 	}
 
@@ -88,7 +87,11 @@ func writeErrorLog(log PanicLog) {
 		fmt.Fprintf(os.Stderr, "[RECOVERY] Failed to open log file: %v\n", err)
 		return
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			fmt.Fprintf(os.Stderr, "[RECOVERY] Failed to close log file: %v\n", closeErr)
+		}
+	}()
 
 	logBytes, err := json.Marshal(log)
 	if err != nil {
