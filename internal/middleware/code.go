@@ -12,6 +12,12 @@ const (
 	RPCSendCodeFailed
 	// EmailInvalid 邮箱正则错误
 	EmailInvalid
+	// RegisterFailed 注册失败
+	RegisterFailed
+	// VerifyCodeInvalid 验证码无效
+	VerifyCodeInvalid
+	// UserAlreadyExist 用户已存在
+	UserAlreadyExist
 )
 
 const (

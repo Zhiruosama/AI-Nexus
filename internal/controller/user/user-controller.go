@@ -114,3 +114,59 @@ func generateRandomString(n int) string {
 
 	return string(b)
 }
+
+// Register 用户注册
+func (uc *Controller) Register(ctx *gin.Context) {
+	var req user_dto.RegisterRequest
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.ParamEmpty,
+			"message": "The input data does not meet the requirements.",
+		})
+		return
+	}
+
+	// 邮箱格式
+	if !emailValidator.MatchString(req.Email) {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.EmailInvalid,
+			"message": "email format is invalid.",
+		})
+		return
+	}
+
+	// 密码
+	if !passwordValidator.MatchString(req.PassWord) {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.PasswordInvalid,
+			"message": "Password format is invalid. It must be 6-20 characters long and contain only letters, numbers, and symbols: !@#$%^&*",
+		})
+		return
+	}
+
+	if req.PassWord != req.RepeatPassWord {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.PasswordMismatch,
+			"message": "The entered password was not equal.",
+		})
+		return
+	}
+
+	// 调用服务层进行注册
+	response, err := uc.UserService.Register(ctx, &req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.RegisterFailed,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "register successful",
+		"data":    response,
+	})
+
+}

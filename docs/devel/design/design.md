@@ -1,77 +1,83 @@
-# 图像生成模块
+## 注册 登录 接口
 
-目标：只做最基本功能——接受用户传来的文本或图片，将其丢给模型生成结果并返回。
+### 安全要求
+- 防止验证码重复发送
+- 防止多端登录
+- 用户获取信息只能获取自己信息 要上锁 通过jwt拿user_id 然后调库拿信息
 
-## 接口一览
-- POST `/image/generate`
-  - 描述：输入文本或图片（二选一或同时），将请求转发给默认模型；返回生成图片。
-  - 请求方式：`application/json` 或 `multipart/form-data`。
-  - 参数（最小化）：
-    - `prompt` string（可选）文本提示词；提供则走文本生图。
-    - `image_file` file（可选）源图；提供则走图生图。
-    - `num` int（可选，默认`1`），生成张数。
-  - 约束：至少提供 `prompt` 或 `image_file` 之一。
-  - 响应：
-    - `images`: `[ { id, url | base64 } ]`（最简返回，后续可扩展为存储元数据）。
+### 业务流程
 
-- GET `/image/:id/file`
-  - 描述：按图片 `id` 返回图片二进制内容。
-  - 查询：`format?`（`png`/`jpg`/`webp`，默认`png`），`size?`（`origin`/`thumb`，默认`origin`）。
-  - 响应：图片二进制（`Content-Type`按`format`）。
+#### 1. 用户注册流程
 
-## 返回方式与选择
-- 模式A：返回 URL（默认）
-  - `POST /image/generate` 返回 JSON：`images: [{ id, url }]`。
-  - 客户端用 `GET /image/:id/file?format=png&size=origin` 拉取二进制。
-  - 适合多图与大图，响应体小，易做缓存/CDN。
+##### 1.1 验证码发送流程（防重复发送机制）
+```
+用户请求发送验证码
+    ↓
+检查Redis缓存：code_send_time:{email}
+    ↓
+如果存在且未过期（60秒内） → 返回错误："发送过于频繁，请{剩余秒数}秒后再试"
+    ↓
+如果不存在或已过期 → 继续发送流程
+    ↓
+调用gRPC服务发送验证码
+    ↓
+发送成功后，在Redis中存储：
+  - verification_code:{email} → 验证码内容（5分钟TTL）
+  - code_send_time:{email} → 当前时间戳（60秒TTL）
+    ↓
+同时将验证码记录存入数据库
+    ↓
+返回成功响应
+```
 
-- 模式B：直接返回图片
-  - JSON Base64：`images: [{ id, base64 }]`，便于快速预览；但响应体较大。
-  - 二进制直传（仅当 `num=1`）：
-    - 方式一：设置请求头 `Accept: image/png`（或 `image/jpeg`、`image/webp`）。
-    - 方式二：参数选择 `return_mode=inline&inline_type=binary&format=png`。
-    - 响应头：`Content-Type: image/<format>`；可选 `Content-Disposition: inline; filename="image.<format>"`。
+##### 1.2 用户注册完整流程
+```
+用户收到发送过来的验证码
+    ↓
+用户提交注册信息与验证码
+    ↓
+从Redis中获取验证码：verification_code:{email}
+    ↓
+验证码校验：
+  - 验证码不存在或已过期 → 返回错误："验证码已过期，请重新发送"
+  - 验证码错误 → 返回错误："验证码错误"
+  - 验证码正确 → 继续注册流程
+    ↓
+创建用户账号（密码使用Argon2id加密）
+    ↓
+清除Redis中的验证码缓存
+    ↓
+注册成功
+```
 
-- 选择参数（建议）：
-  - `return_mode`: `url` | `inline`（默认 `url`）。
-  - `inline_type`: `base64` | `binary`（当 `return_mode=inline` 时有效）。
-  - `format`: `png` | `jpg` | `webp`（适用于二进制直传与 `GET /image/:id/file`）。
+#### 2. 用户登录
 
-- 响应示例：
-  - URL 模式：
-    ```json
-    { "images": [ { "id": "123", "url": "/image/123/file?format=png" } ] }
-    ```
-  - Inline Base64：
-    ```json
-    { "images": [ { "id": "123", "base64": "data:image/png;base64,iVBORw0K..." } ] }
-    ```
-  - 二进制直传：响应为图片字节流，`Content-Type: image/png`。
+##### 2.1 登录流程
+```
+用户提交登录信息（邮箱/用户名 + 密码）
+    ↓
+查询用户信息
+    ↓
+密码校验（Argon2id验证）
+    ↓
+生成JWT Token（可以用来查询user_id 查询对应用户信息 并且新Token会覆盖旧Token）
+    ↓
+Redis操作：SETNX user_token:{user_id} {new_token} EX 604800
+    ↓
+判断SETNX结果：
+  - 返回1（设置成功） → 首次登录或旧Token已过期 → 登录成功
+  - 返回0（设置失败） → 用户已在其他设备登录 → 强制踢出
+```
 
-- 约束与建议：
-  - 当 `num > 1` 时不支持 `binary` 直传，建议使用 `url` 或 `base64`。
-  - 大图/高并发场景优先使用 URL 模式以降低响应体体积。`
-  - 如需安全控制可引入签名 URL 或 `expires_at`（后续扩展，不在极简版实现范围）。
-
-## 最小实现建议
-- 模块目录：`internal/{routes,controller,service,dao}/image`，照抄 `demo` 的分层结构。
-- 存储：
-  - 数据表（极简）：`images(id, path, created_at)` 或直接文件系统存路径。
-  - 返回时给出 `id` 与 `url`（或直接 `base64`）。
-- 模型调用：
-  - `service` 层根据是否携带 `prompt` 或 `image_file` 调用对应模型接口。
-  - 先只支持一个默认模型（如本地或占位 mock），后续再扩展选择模型。
-
-## 错误码（极简）
-- `400` 参数错误（未提供 `prompt` 与 `image_file`）。
-- `404` 图片不存在。
-- `500` 服务内部错误。
-
-## 示例
-- 文本生图（JSON）：
-  - `POST /image/generate`
-  - Body: `{ "prompt": "a cat playing piano", "size": "512x512" }`
-
-- 图生图（FormData）：
-  - `POST /image/generate`
-  - Form: `image_file=@/path/to/image.png; size=512x512`
+#### 3. 用户信息获取
+```
+获取请求头中的JWT Token
+    ↓
+验证Token有效性
+    ↓
+从Token中解析user_id
+    ↓
+根据user_id查询用户信息
+    ↓
+返回用户信息（仅限本人信息）
+```
