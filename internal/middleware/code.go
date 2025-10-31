@@ -8,6 +8,8 @@ const (
 	PasswordMismatch
 	// PasswordInvalid 密码正则匹配错误
 	PasswordInvalid
+	// VerifyCodeExist 验证码已存在
+	VerifyCodeExist
 	// RPCSendCodeFailed 验证码发送失败
 	RPCSendCodeFailed
 	// EmailInvalid 邮箱正则错误

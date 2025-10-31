@@ -3,18 +3,17 @@ package user
 
 import (
 	"fmt"
-	"time"
 
 	user_dao "github.com/Zhiruosama/ai_nexus/internal/dao/user"
 	user_do "github.com/Zhiruosama/ai_nexus/internal/domain/do/user"
 	user_dto "github.com/Zhiruosama/ai_nexus/internal/domain/dto/user"
-	user_vo "github.com/Zhiruosama/ai_nexus/internal/domain/vo/user"
 	"github.com/Zhiruosama/ai_nexus/internal/grpc"
-	"github.com/Zhiruosama/ai_nexus/internal/middleware"
+	"github.com/Zhiruosama/ai_nexus/internal/pkg"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/logger"
-	"github.com/Zhiruosama/ai_nexus/internal/pkg/utils"
+	"github.com/Zhiruosama/ai_nexus/internal/pkg/rdb"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 // Service 对应 user 模块的 Service 结构
@@ -28,6 +27,10 @@ func NewService() *Service {
 		UserDao: &user_dao.DAO{},
 	}
 }
+
+const (
+	codePrefix = "code_"
+)
 
 // SendEmailCode 发送邮箱服务
 func (s *Service) SendEmailCode(ctx *gin.Context, dto *user_dto.SendEmailCode) error {
@@ -50,59 +53,50 @@ func (s *Service) SendEmailCode(ctx *gin.Context, dto *user_dto.SendEmailCode) e
 }
 
 // Register 注册服务
-func (s *Service) Register(ctx *gin.Context, dto *user_dto.RegisterRequest) (*user_vo.RegisterResponse, error) {
-	// 验证验证码
-	isValid, err := s.UserDao.VerifyEmailCode(ctx, dto.Email, dto.VerifyCode)
-	if err != nil {
+func (s *Service) Register(ctx *gin.Context, dto *user_dto.RegisterRequest) error {
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+
+	code, err := rdbClient.Get(rCtx, codePrefix+dto.Email).Result()
+	if err == redis.Nil {
 		logger.Error(ctx, "Verify email code error: %s", err.Error())
-		return nil, fmt.Errorf("验证码错误")
+		return fmt.Errorf("the verification code has expired")
 	}
-	if !isValid {
-		return nil, err
+
+	if code != dto.VerifyCode {
+		return fmt.Errorf("verify code error")
 	}
 
 	// 检查用户是否存在
 	exists, err := s.UserDao.CheckUserExists(ctx, dto.Email)
 	if err != nil {
-		logger.Error(ctx, "Check user exists error: %s", err.Error())
-		return nil, err
+		logger.Error(ctx, "check user exists error: %s", err.Error())
+		return err
 	}
 	if exists {
-		return nil, fmt.Errorf("用户已存在")
+		return fmt.Errorf("user exists")
 	}
 
-	passwordHash, err := utils.HashPassword(dto.PassWord)
+	passwordHash, err := pkg.HashPassword(dto.PassWord)
 	if err != nil {
 		logger.Error(ctx, "Hash password error: %s", err.Error())
-		return nil, err
+		return err
 	}
 
 	// 角色DO
 	userDO := &user_do.TableUserDO{
 		UUID:         uuid.New().String(),
-		Avatar:       "",
+		Avatar:       "/static/avatar/default.png",
 		Nickname:     dto.NickName,
 		Email:        dto.Email,
 		PasswordHash: passwordHash,
-		LastLogin:    time.Now().String(),
 	}
 
 	err = s.UserDao.CreateUser(ctx, userDO)
 	if err != nil {
 		logger.Error(ctx, "Create user error: %s", err.Error())
-		return nil, err
+		return err
 	}
 
-	token, err := middleware.GenerateToken(userDO.UUID)
-	if err != nil {
-		logger.Error(ctx, "Generate token error: %s", err.Error())
-		return nil, err
-	}
-
-	return &user_vo.RegisterResponse{
-		Token:    token,
-		UserID:   userDO.UUID,
-		NickName: userDO.Nickname,
-		Email:    userDO.Email,
-	}, nil
+	return nil
 }

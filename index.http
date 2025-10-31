@@ -8,16 +8,16 @@ GET http://127.0.0.1:9000/demo/panic-test HTTP/1.1
 POST http://127.0.0.1:9000/user/send-code HTTP/1.1
 Content-Type: application/x-www-form-urlencoded
 
-nickname=zhangsan&email=1512619344@qq.com&password=123456aB&repeat_password=123456aB
+nickname=zhangsan&email=2262317520@qq.com&password=123456aB&repeat_password=123456aB
 
-### 用户注册 (需要先获取验证码)
+### 用户注册
 POST http://localhost:9000/user/register HTTP/1.1
 Content-Type: application/json
 
 {
-    "nickname": "testuser",
-    "email": "1512619344@qq.com",
+    "nickname": "chulan",
+    "email": "2262317520@qq.com",
     "password": "Test123!",
     "repeat_password": "Test123!",
-    "verify_code": "ff8b"
+    "verify_code": "79e4"
 }

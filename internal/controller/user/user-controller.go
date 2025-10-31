@@ -9,6 +9,7 @@ import (
 
 	user_dto "github.com/Zhiruosama/ai_nexus/internal/domain/dto/user"
 	"github.com/Zhiruosama/ai_nexus/internal/middleware"
+	"github.com/Zhiruosama/ai_nexus/internal/pkg/rdb"
 	user_service "github.com/Zhiruosama/ai_nexus/internal/service/user"
 	"github.com/gin-gonic/gin"
 )
@@ -26,20 +27,24 @@ func NewController(us *user_service.Service) *Controller {
 }
 
 const (
-	passwordRegex = `^[a-zA-Z0-9!@#$%^&*]{6,20}$`
-	emailRegex    = `^[^@\s]+@[^@\s]+\.[^@\s]+$`
+	passwordRegex  = `^[a-zA-Z0-9!@#$%^&*]{6,20}$`
+	emailRegex     = `^[^@\s]+@[^@\s]+\.[^@\s]+$`
+	charset        = "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "0123456789"
+	nickNamePrefix = "用户_"
+	codePrefix     = "code_"
 )
 
-// 编译正则表达式，通常在 init() 或全局定义时完成
 var (
 	passwordValidator = regexp.MustCompile(passwordRegex)
 	emailValidator    = regexp.MustCompile(emailRegex)
+	seededRand        = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
 
 // SendEmailCode 发送验证码
 func (uc *Controller) SendEmailCode(ctx *gin.Context) {
-	const prefix = "用户_"
-	defaultName := prefix + generateRandomString(5)
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+	defaultName := nickNamePrefix + generateRandomString(5)
 
 	nickName := ctx.DefaultPostForm("nickname", defaultName)
 	email := ctx.DefaultPostForm("email", "")
@@ -78,6 +83,15 @@ func (uc *Controller) SendEmailCode(ctx *gin.Context) {
 		return
 	}
 
+	_, err := rdbClient.Get(rCtx, codePrefix+email).Result()
+	if err == nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.VerifyCodeExist,
+			"message": "varify code already exists",
+		})
+		return
+	}
+
 	dto := &user_dto.SendEmailCode{
 		NickName:       nickName,
 		Email:          email,
@@ -85,7 +99,7 @@ func (uc *Controller) SendEmailCode(ctx *gin.Context) {
 		RepeatPassWord: repeatPassword,
 	}
 
-	err := uc.UserService.SendEmailCode(ctx, dto)
+	err = uc.UserService.SendEmailCode(ctx, dto)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    middleware.RPCSendCodeFailed,
@@ -97,22 +111,6 @@ func (uc *Controller) SendEmailCode(ctx *gin.Context) {
 		"code":    http.StatusOK,
 		"message": "send email successful",
 	})
-}
-
-const charset = "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "0123456789"
-
-var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
-
-// generateRandomString 生成指定长度的随机字符串
-func generateRandomString(n int) string {
-	b := make([]byte, n)
-
-	for i := range b {
-		randomIndex := seededRand.Intn(len(charset))
-		b[i] = charset[randomIndex]
-	}
-
-	return string(b)
 }
 
 // Register 用户注册
@@ -127,34 +125,12 @@ func (uc *Controller) Register(ctx *gin.Context) {
 		return
 	}
 
-	// 邮箱格式
-	if !emailValidator.MatchString(req.Email) {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    middleware.EmailInvalid,
-			"message": "email format is invalid.",
-		})
-		return
-	}
-
-	// 密码
-	if !passwordValidator.MatchString(req.PassWord) {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    middleware.PasswordInvalid,
-			"message": "Password format is invalid. It must be 6-20 characters long and contain only letters, numbers, and symbols: !@#$%^&*",
-		})
-		return
-	}
-
-	if req.PassWord != req.RepeatPassWord {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    middleware.PasswordMismatch,
-			"message": "The entered password was not equal.",
-		})
-		return
+	if req.NickName == "" {
+		req.NickName = nickNamePrefix + generateRandomString(5)
 	}
 
 	// 调用服务层进行注册
-	response, err := uc.UserService.Register(ctx, &req)
+	err := uc.UserService.Register(ctx, &req)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    middleware.RegisterFailed,
@@ -166,7 +142,17 @@ func (uc *Controller) Register(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"code":    http.StatusOK,
 		"message": "register successful",
-		"data":    response,
 	})
+}
 
+// generateRandomString 生成指定长度的随机字符串
+func generateRandomString(n int) string {
+	b := make([]byte, n)
+
+	for i := range b {
+		randomIndex := seededRand.Intn(len(charset))
+		b[i] = charset[randomIndex]
+	}
+
+	return string(b)
 }

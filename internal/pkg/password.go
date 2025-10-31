@@ -1,5 +1,5 @@
-// Package utils 密码加密工具
-package utils
+// Package pkg 密码加密工具
+package pkg
 
 import (
 	"crypto/rand"
