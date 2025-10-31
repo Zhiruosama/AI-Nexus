@@ -4,7 +4,7 @@ package user
 import (
 	user_dao "github.com/Zhiruosama/ai_nexus/internal/dao/user"
 	user_do "github.com/Zhiruosama/ai_nexus/internal/domain/do/user"
-	user_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/user"
+	user_dto "github.com/Zhiruosama/ai_nexus/internal/domain/dto/user"
 	"github.com/Zhiruosama/ai_nexus/internal/grpc"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/logger"
 	"github.com/gin-gonic/gin"
@@ -23,11 +23,11 @@ func NewService() *Service {
 }
 
 // SendEmailCode 发送邮箱服务
-func (s *Service) SendEmailCode(ctx *gin.Context, query *user_query.SendEmailCode) error {
+func (s *Service) SendEmailCode(ctx *gin.Context, dto *user_dto.SendEmailCode) error {
 	do := &user_do.TableUserVerificationCodesDO{}
 
-	do.Email = query.Email
-	_, _, code, err := grpc.GetVerificationCode(query.Email)
+	do.Email = dto.Email
+	_, _, code, err := grpc.GetVerificationCode(dto.Email)
 	if err != nil {
 		logger.Error(ctx, "RPC send code error: %s", err.Error())
 		return err

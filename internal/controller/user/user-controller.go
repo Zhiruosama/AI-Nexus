@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"time"
 
-	user_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/user"
+	user_dto "github.com/Zhiruosama/ai_nexus/internal/domain/dto/user"
 	"github.com/Zhiruosama/ai_nexus/internal/middleware"
 	user_service "github.com/Zhiruosama/ai_nexus/internal/service/user"
 	"github.com/gin-gonic/gin"
@@ -39,12 +39,12 @@ var (
 // SendEmailCode 发送验证码
 func (uc *Controller) SendEmailCode(ctx *gin.Context) {
 	const prefix = "用户_"
-
 	defaultName := prefix + generateRandomString(5)
-	nickName := ctx.DefaultQuery("nickname", defaultName)
-	email := ctx.DefaultQuery("email", "")
-	password := ctx.DefaultQuery("password", "-1")
-	repeatPassword := ctx.DefaultQuery("repeat_password", "-1")
+
+	nickName := ctx.DefaultPostForm("nickname", defaultName)
+	email := ctx.DefaultPostForm("email", "")
+	password := ctx.DefaultPostForm("password", "-1")
+	repeatPassword := ctx.DefaultPostForm("repeat_password", "-1")
 
 	if email == "" || password == "-1" || repeatPassword == "=1" {
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -78,14 +78,14 @@ func (uc *Controller) SendEmailCode(ctx *gin.Context) {
 		return
 	}
 
-	query := &user_query.SendEmailCode{
+	dto := &user_dto.SendEmailCode{
 		NickName:       nickName,
 		Email:          email,
 		PassWord:       password,
 		RepeatPassWord: repeatPassword,
 	}
 
-	err := uc.UserService.SendEmailCode(ctx, query)
+	err := uc.UserService.SendEmailCode(ctx, dto)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    middleware.RPCSendCodeFailed,

@@ -14,6 +14,6 @@ func InitUserRoutes(r *gin.Engine) {
 
 	demo := r.Group("/user")
 	{
-		demo.GET("/send-code", uc.SendEmailCode)
+		demo.POST("/send-code", uc.SendEmailCode)
 	}
 }
