@@ -232,7 +232,7 @@ func (uc *Controller) GetUserInfo(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, uservo)
 }
 
-// GetAllUser 获取所有用户信息
+// GetAllUsers 获取所有用户信息
 func (uc *Controller) GetAllUsers(ctx *gin.Context) {
 	users := &user_vo.ListUserInfoVO{}
 

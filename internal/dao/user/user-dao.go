@@ -116,7 +116,7 @@ func (d DAO) UpdateLoginTime(ctx *gin.Context, userid string) error {
 
 // GetAllUsers 查询所有用户信息
 func (d DAO) GetAllUsers(ctx *gin.Context) ([]*user_do.TableUserDO, error) {
-	var users []*user_do.TableUserDO = make([]*user_do.TableUserDO, 0)
+	var users = make([]*user_do.TableUserDO, 0)
 	sql := `SELECT id, uuid, nickname, avatar, email, last_login, updated_at FROM users`
 
 	result := db.GlobalDB.Raw(sql).Scan(&users)

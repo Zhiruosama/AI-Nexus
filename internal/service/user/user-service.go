@@ -288,7 +288,7 @@ func (s *Service) GetUserInfo(ctx *gin.Context, userid string) (*user_vo.InfoVO,
 	return uvo, nil
 }
 
-// GetAllUser 获取所有用户信息
+// GetAllUsers 获取所有用户信息
 func (s *Service) GetAllUsers(ctx *gin.Context, users *user_vo.ListUserInfoVO) error {
 	rdbClient := rdb.Rdb
 	rCtx := rdb.Ctx
@@ -307,22 +307,22 @@ func (s *Service) GetAllUsers(ctx *gin.Context, users *user_vo.ListUserInfoVO) e
 		return nil
 	}
 
-	user_dos, err := s.UserDao.GetAllUsers(ctx)
+	userDos, err := s.UserDao.GetAllUsers(ctx)
 	if err != nil {
 		return err
 	}
 
 	users.Code = 200
 	users.Message = "Success get all user info"
-	for _, user_do := range user_dos {
+	for _, userDo := range userDos {
 		users.Users = append(users.Users, user_vo.TableUserVO{
-			ID:        user_do.ID,
-			UUID:      user_do.UUID,
-			Nickname:  user_do.Nickname,
-			Avatar:    user_do.Avatar,
-			Email:     user_do.Email,
-			LastLogin: user_do.LastLogin,
-			UpdatedAt: user_do.UpdatedAt,
+			ID:        userDo.ID,
+			UUID:      userDo.UUID,
+			Nickname:  userDo.Nickname,
+			Avatar:    userDo.Avatar,
+			Email:     userDo.Email,
+			LastLogin: userDo.LastLogin,
+			UpdatedAt: userDo.UpdatedAt,
 		})
 	}
 

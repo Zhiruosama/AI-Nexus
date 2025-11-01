@@ -23,6 +23,7 @@ type ListUserInfoVO struct {
 	Users   []TableUserVO `json:"users"`
 }
 
+// TableUserVO 单个用户的全量数据
 type TableUserVO struct {
 	ID        int64  `json:"id"`
 	UUID      string `json:"uuid"`
