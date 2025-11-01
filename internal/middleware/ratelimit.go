@@ -15,7 +15,7 @@ import (
 
 // RateLimitingMiddleware 中间件具体实现
 func RateLimitingMiddleware() gin.HandlerFunc {
-	luaScript, err := os.ReadFile(filepath.Join("middleware", "lua", "rate_limit.lua"))
+	luaScript, err := os.ReadFile(filepath.Join("internal", "middleware", "lua", "rate_limit.lua"))
 	if err != nil {
 		panic(fmt.Sprintf("Failed to read rate limit lua script: %v", err))
 	}

@@ -7,7 +7,10 @@ import (
 	user_dao "github.com/Zhiruosama/ai_nexus/internal/dao/user"
 	user_do "github.com/Zhiruosama/ai_nexus/internal/domain/do/user"
 	user_dto "github.com/Zhiruosama/ai_nexus/internal/domain/dto/user"
+	user_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/user"
+	user_vo "github.com/Zhiruosama/ai_nexus/internal/domain/vo/user"
 	"github.com/Zhiruosama/ai_nexus/internal/grpc"
+	"github.com/Zhiruosama/ai_nexus/internal/middleware"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/logger"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/rdb"
@@ -97,6 +100,114 @@ func (s *Service) Register(ctx *gin.Context, dto *user_dto.RegisterRequest) erro
 		logger.Error(ctx, "Create user error: %s", err.Error())
 		return err
 	}
+
+	// 注册成功清除redis
+	_, err = rdbClient.Del(rCtx, codePrefix+dto.Email).Result()
+	if err != nil {
+		logger.Error(ctx, "Delete verify code error: %s", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+// LoginWithNicknamePassword 用户名密码登录
+func (s *Service) LoginWithNicknamePassword(ctx *gin.Context, query *user_query.LoginQuery, vo *user_vo.LoginVO) error {
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+	uuid, password, err := s.UserDao.GetPasswordByNickname(ctx, query.Nickname)
+	if err != nil {
+		return err
+	}
+
+	_, err = rdbClient.Get(rCtx, uuid).Result()
+	if err == redis.Nil {
+		ok, errs := pkg.VerifyPassword(query.PassWord, password)
+		if errs != nil {
+			return fmt.Errorf("VerifyPassword error")
+		} else if !ok {
+			return fmt.Errorf("password error")
+		}
+
+		vo.JWTToken, errs = middleware.GenerateToken(uuid)
+		if errs != nil {
+			logger.Error(ctx, "Generate token error: %s", err.Error())
+			return err
+		}
+
+		rdbClient.Set(rCtx, uuid, vo.JWTToken, 0)
+
+		return nil
+	}
+	if err != nil {
+		logger.Error(ctx, "redis get error.: %s", err.Error())
+		return err
+	}
+	return fmt.Errorf("this account is logged in")
+}
+
+// LoginWithEmailPassword 邮箱密码登录
+func (s *Service) LoginWithEmailPassword(ctx *gin.Context, query *user_query.LoginQuery, vo *user_vo.LoginVO) error {
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+	uuid, password, err := s.UserDao.GetPasswordByEmail(ctx, query.Email)
+	if err != nil {
+		return err
+	}
+
+	_, err = rdbClient.Get(rCtx, uuid).Result()
+	if err == redis.Nil {
+		ok, errs := pkg.VerifyPassword(query.PassWord, password)
+		if errs != nil {
+			return fmt.Errorf("VerifyPassword error")
+		} else if !ok {
+			return fmt.Errorf("password error")
+		}
+
+		vo.JWTToken, errs = middleware.GenerateToken(uuid)
+		if errs != nil {
+			logger.Error(ctx, "Generate token error: %s", err.Error())
+			return err
+		}
+
+		rdbClient.Set(rCtx, uuid, vo.JWTToken, 0)
+
+		return nil
+	}
+
+	if err != nil {
+		logger.Error(ctx, "redis get error.: %s", err.Error())
+		return err
+	}
+	return fmt.Errorf("this account is logged in")
+}
+
+// LoginWithEmailVerifyCode 邮箱验证码登录
+func (s *Service) LoginWithEmailVerifyCode(ctx *gin.Context, query *user_query.LoginQuery, vo *user_vo.LoginVO) error {
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+	code, err := rdbClient.Get(rCtx, codePrefix+query.Email).Result()
+	if err != nil {
+		logger.Error(ctx, "Get verify code error: %s", err.Error())
+		return err
+	}
+	uuid, _, err := s.UserDao.GetPasswordByEmail(ctx, query.Email)
+	if err != nil {
+		logger.Error(ctx, "Get uuid error: %s", err.Error())
+		return err
+	}
+
+	if code != query.VerifyCode {
+		return fmt.Errorf("email verification code error")
+	}
+
+	vo.JWTToken, err = middleware.GenerateToken(uuid)
+	if err != nil {
+		logger.Error(ctx, "Generate token error: %s", err.Error())
+		return err
+	}
+
+	rdbClient.Set(rCtx, uuid, vo.JWTToken, 0)
 
 	return nil
 }

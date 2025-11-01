@@ -58,3 +58,37 @@ func (d DAO) CreateUser(ctx *gin.Context, userDO *user_do.TableUserDO) error {
 
 	return nil
 }
+
+// GetPasswordByNickname
+func (d DAO) GetPasswordByNickname(ctx *gin.Context, nickname string) (uuid string, password string, err error) {
+	sql := `SELECT uuid, password_hash FROM users WHERE nickname = ?`
+	var creds userCredentials
+	result := db.GlobalDB.Raw(sql, nickname).Scan(&creds)
+
+	if result.Error != nil {
+		logger.Error(ctx, "GetPasswordByNickname query error: %s", result.Error.Error())
+		return "", "", result.Error
+	}
+
+	return creds.Uuid, creds.PasswordHash, nil
+}
+
+// GetPasswordByEmail
+func (d DAO) GetPasswordByEmail(ctx *gin.Context, email string) (uuid string, password string, err error) {
+	sql := `SELECT uuid,password_hash FROM users WHERE email = ?`
+	var creds userCredentials
+	result := db.GlobalDB.Raw(sql, email).Scan(&creds)
+
+	if result.Error != nil {
+		logger.Error(ctx, "GetPasswordByEmail query error: %s", result.Error.Error())
+		return "", "", result.Error
+	}
+
+	return creds.Uuid, creds.PasswordHash, nil
+}
+
+// userCredentials 接收查询结果
+type userCredentials struct {
+	Uuid         string `gorm:"column:uuid"`
+	PasswordHash string `gorm:"column:password_hash"`
+}
