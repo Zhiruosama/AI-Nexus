@@ -20,6 +20,20 @@ const (
 	VerifyCodeInvalid
 	// UserAlreadyExist 用户已存在
 	UserAlreadyExist
+	// LoginParamError 登录参数错误
+	LoginParamError
+	// UserInformationEmpty 用户信息为空
+	UserInformationEmpty
+	// PasswordEmpty 密码或者验证码不能为空
+	PasswordEmpty
+	// LoginFailed 登陆失败
+	LoginFailed
+	// Loginsuccess 登陆成功
+	Loginsuccess
+	// LogoutFailed 登出失败
+	LogoutFailed
+	// GetUserInfoFailed 获取用户信息失败
+	GetUserInfoFailed
 )
 
 const (

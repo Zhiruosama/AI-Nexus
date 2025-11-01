@@ -3,6 +3,7 @@ package user
 
 import (
 	user_controller "github.com/Zhiruosama/ai_nexus/internal/controller/user"
+	"github.com/Zhiruosama/ai_nexus/internal/middleware"
 	user_service "github.com/Zhiruosama/ai_nexus/internal/service/user"
 	"github.com/gin-gonic/gin"
 )
@@ -12,9 +13,12 @@ func InitUserRoutes(r *gin.Engine) {
 	us := user_service.NewService()
 	uc := user_controller.NewController(us)
 
-	demo := r.Group("/user")
+	user := r.Group("/user")
 	{
-		demo.POST("/send-code", uc.SendEmailCode)
-		demo.POST("/register", uc.Register)
+		user.POST("/send-code", uc.SendEmailCode)
+		user.POST("/register", uc.Register)
+		user.GET("/login", uc.Login)
+		user.GET("/logout", middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.Logout)
+		user.GET("/getuserinfo", middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.GetUserInfo)
 	}
 }

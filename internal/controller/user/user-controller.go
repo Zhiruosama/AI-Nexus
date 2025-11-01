@@ -8,6 +8,8 @@ import (
 	"time"
 
 	user_dto "github.com/Zhiruosama/ai_nexus/internal/domain/dto/user"
+	user_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/user"
+	user_vo "github.com/Zhiruosama/ai_nexus/internal/domain/vo/user"
 	"github.com/Zhiruosama/ai_nexus/internal/middleware"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/rdb"
 	user_service "github.com/Zhiruosama/ai_nexus/internal/service/user"
@@ -143,6 +145,91 @@ func (uc *Controller) Register(ctx *gin.Context) {
 		"code":    http.StatusOK,
 		"message": "register successful",
 	})
+}
+
+// Login 登录
+func (uc *Controller) Login(ctx *gin.Context) {
+	var query = &user_query.LoginQuery{}
+	var loginvo = &user_vo.LoginVO{}
+
+	query.Email = ctx.DefaultQuery("email", "")
+	query.Nickname = ctx.DefaultQuery("nickname", "")
+	query.PassWord = ctx.DefaultQuery("password", "")
+	query.VerifyCode = ctx.DefaultQuery("verify_code", "")
+
+	if query.Email == "" && query.Nickname == "" {
+		loginvo.Code = int32(middleware.UserInformationEmpty)
+		loginvo.Message = "User information cannot be empty"
+		loginvo.JWTToken = ""
+		ctx.JSON(http.StatusBadRequest, loginvo)
+		return
+	}
+
+	if query.PassWord == "" && query.VerifyCode == "" {
+		loginvo.Code = int32(middleware.PasswordEmpty)
+		loginvo.Message = "Password cannot be empty"
+		loginvo.JWTToken = ""
+		ctx.JSON(http.StatusBadRequest, loginvo)
+		return
+	}
+
+	var err error
+
+	// 校验参数 判断是用用户密码登录 还是用邮箱验证码登录
+	if query.Nickname != "" && query.PassWord != "" {
+		err = uc.UserService.LoginWithNicknamePassword(ctx, query, loginvo)
+	} else if query.Email != "" && query.VerifyCode != "" {
+		err = uc.UserService.LoginWithEmailVerifyCode(ctx, query, loginvo)
+	} else if query.Email != "" && query.PassWord != "" {
+		err = uc.UserService.LoginWithEmailPassword(ctx, query, loginvo)
+	}
+
+	if err != nil {
+		loginvo.Code = int32(middleware.LoginFailed)
+		loginvo.Message = err.Error()
+		loginvo.JWTToken = ""
+		ctx.JSON(http.StatusBadRequest, loginvo)
+		return
+	}
+
+	loginvo.Code = int32(http.StatusOK)
+	loginvo.Message = "login successful"
+
+	ctx.JSON(http.StatusOK, loginvo)
+}
+
+// Logout 登出
+func (uc *Controller) Logout(ctx *gin.Context) {
+	UserID, _ := ctx.Get("user_id")
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+	_, err := rdbClient.Del(rCtx, UserID.(string)).Result()
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.LogoutFailed,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "logout successful",
+	})
+}
+
+// GetUserInfo 获取当前已登录用户信息
+func (uc *Controller) GetUserInfo(ctx *gin.Context) {
+	UserID, _ := ctx.Get("user_id")
+	uservo, err := uc.UserService.GetUserInfo(ctx, UserID.(string))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.GetUserInfoFailed,
+			"message": err.Error(),
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, uservo)
 }
 
 // generateRandomString 生成指定长度的随机字符串

@@ -59,7 +59,7 @@ type IdempotencyConfig struct {
 
 // DeduplicationConfig 重复请求判断参数
 type DeduplicationConfig struct {
-	LockDuration time.Duration `yaml:"locakduration"`
+	LockDuration time.Duration `yaml:"lockduration"`
 }
 
 // GRPCClientConfig 结构体用于配置gRPC连接
