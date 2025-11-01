@@ -3,6 +3,7 @@ package user
 
 import (
 	"fmt"
+	"time"
 
 	user_do "github.com/Zhiruosama/ai_nexus/internal/domain/do/user"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/db"
@@ -70,7 +71,7 @@ func (d DAO) GetPasswordByNickname(ctx *gin.Context, nickname string) (uuid stri
 		return "", "", result.Error
 	}
 
-	return creds.uuid, creds.passwordhash, nil
+	return creds.UUID, creds.PasswordHash, nil
 }
 
 // GetPasswordByEmail 根据用户邮箱获取用户密码
@@ -84,7 +85,7 @@ func (d DAO) GetPasswordByEmail(ctx *gin.Context, email string) (uuid string, pa
 		return "", "", result.Error
 	}
 
-	return creds.uuid, creds.passwordhash, nil
+	return creds.UUID, creds.PasswordHash, nil
 }
 
 // GetUserByID 根据UUID获取用户
@@ -99,8 +100,21 @@ func (d DAO) GetUserByID(ctx *gin.Context, userid string) (userDO *user_do.Table
 	return userDO, nil
 }
 
+// UpdateLoginTime 更新登录时间戳
+func (d DAO) UpdateLoginTime(ctx *gin.Context, userid string) error {
+	sql := `UPDATE users SET last_login=? WHERE uuid=?`
+	result := db.GlobalDB.Exec(sql, time.Now(), userid)
+
+	if result.Error != nil {
+		logger.Error(ctx, "UpdateLoginTime update error: %s", result.Error.Error())
+		return result.Error
+	}
+
+	return nil
+}
+
 // userCredentials 接收查询结果
 type userCredentials struct {
-	uuid         string `gorm:"column:uuid"`
-	passwordhash string `gorm:"column:password_hash"`
+	UUID         string `gorm:"column:uuid"`
+	PasswordHash string `gorm:"column:password_hash"`
 }

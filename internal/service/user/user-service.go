@@ -131,11 +131,20 @@ func (s *Service) LoginWithNicknamePassword(ctx *gin.Context, query *user_query.
 
 		vo.JWTToken, errs = middleware.GenerateToken(uuid)
 		if errs != nil {
-			logger.Error(ctx, "Generate token error: %s", err.Error())
-			return err
+			logger.Error(ctx, "Generate token error: %s", errs.Error())
+			return errs
 		}
 
-		rdbClient.Set(rCtx, uuid, vo.JWTToken, 0)
+		_, errs = rdbClient.Set(rCtx, uuid, vo.JWTToken, 0).Result()
+		if errs != nil {
+			logger.Error(ctx, "Set token to redis error: %s", errs.Error())
+			return errs
+		}
+
+		errs = s.UserDao.UpdateLoginTime(ctx, uuid)
+		if errs != nil {
+			return errs
+		}
 
 		return nil
 	}
@@ -166,11 +175,20 @@ func (s *Service) LoginWithEmailPassword(ctx *gin.Context, query *user_query.Log
 
 		vo.JWTToken, errs = middleware.GenerateToken(uuid)
 		if errs != nil {
-			logger.Error(ctx, "Generate token error: %s", err.Error())
-			return err
+			logger.Error(ctx, "Generate token error: %s", errs.Error())
+			return errs
 		}
 
-		rdbClient.Set(rCtx, uuid, vo.JWTToken, 0)
+		_, errs = rdbClient.Set(rCtx, uuid, vo.JWTToken, 0).Result()
+		if errs != nil {
+			logger.Error(ctx, "Set token to redis error: %s", errs.Error())
+			return errs
+		}
+
+		errs = s.UserDao.UpdateLoginTime(ctx, uuid)
+		if errs != nil {
+			return errs
+		}
 
 		return nil
 	}
@@ -186,19 +204,21 @@ func (s *Service) LoginWithEmailPassword(ctx *gin.Context, query *user_query.Log
 func (s *Service) LoginWithEmailVerifyCode(ctx *gin.Context, query *user_query.LoginQuery, vo *user_vo.LoginVO) error {
 	rdbClient := rdb.Rdb
 	rCtx := rdb.Ctx
+
 	code, err := rdbClient.Get(rCtx, codePrefix+query.Email).Result()
 	if err != nil {
 		logger.Error(ctx, "Get verify code error: %s", err.Error())
 		return err
 	}
+
+	if code != query.VerifyCode {
+		return fmt.Errorf("email verification code error")
+	}
+
 	uuid, _, err := s.UserDao.GetPasswordByEmail(ctx, query.Email)
 	if err != nil {
 		logger.Error(ctx, "Get uuid error: %s", err.Error())
 		return err
-	}
-
-	if code != query.VerifyCode {
-		return fmt.Errorf("email verification code error")
 	}
 
 	vo.JWTToken, err = middleware.GenerateToken(uuid)
@@ -207,7 +227,16 @@ func (s *Service) LoginWithEmailVerifyCode(ctx *gin.Context, query *user_query.L
 		return err
 	}
 
-	rdbClient.Set(rCtx, uuid, vo.JWTToken, 0)
+	_, err = rdbClient.Set(rCtx, uuid, vo.JWTToken, 0).Result()
+	if err != nil {
+		logger.Error(ctx, "Set token to redis error: %s", err.Error())
+		return err
+	}
+
+	err = s.UserDao.UpdateLoginTime(ctx, uuid)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
