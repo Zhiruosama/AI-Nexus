@@ -218,6 +218,21 @@ func (uc *Controller) Logout(ctx *gin.Context) {
 	})
 }
 
+// GetUserInfo 获取当前已登录用户信息
+func (uc *Controller) GetUserInfo(ctx *gin.Context) {
+	var uservo *user_vo.UserInfoVO = &user_vo.UserInfoVO{}
+	user_id, _ := ctx.Get("user_id")
+	uservo, err := uc.UserService.GetUserInfo(ctx, user_id.(string))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.GetUserInfoFailed,
+			"message": err.Error(),
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, uservo)
+}
+
 // generateRandomString 生成指定长度的随机字符串
 func generateRandomString(n int) string {
 	b := make([]byte, n)

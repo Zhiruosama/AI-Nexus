@@ -32,6 +32,8 @@ const (
 	Loginsuccess
 	// LogoutFailed 登出失败
 	LogoutFailed
+	// GetUserInfoFailed 获取用户信息失败
+	GetUserInfoFailed
 )
 
 const (

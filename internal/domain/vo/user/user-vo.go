@@ -6,3 +6,10 @@ type LoginVO struct {
 	Message  string `json:"message"`
 	JWTToken string `json:"token"`
 }
+
+type UserInfoVO struct {
+	UUID     string `json:"uuid"`
+	Nickname string `json:"nickname"`
+	Email    string `json:"email"`
+	Avatar   string `json:"avatar"`
+}

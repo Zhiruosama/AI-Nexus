@@ -87,6 +87,18 @@ func (d DAO) GetPasswordByEmail(ctx *gin.Context, email string) (uuid string, pa
 	return creds.Uuid, creds.PasswordHash, nil
 }
 
+// GetUserByID 根据UUID获取用户
+func (d DAO) GetUserByID(ctx *gin.Context, user_id string) (userDO *user_do.TableUserDO, err error) {
+	userDO = &user_do.TableUserDO{}
+	sql := `SELECT uuid,nickname,email,avatar from users WHERE uuid = ?`
+	result := db.GlobalDB.Raw(sql, user_id).Scan(userDO)
+	if result.Error != nil {
+		logger.Error(ctx, "GetUserByID query error: %s", result.Error.Error())
+		return nil, result.Error
+	}
+	return userDO, nil
+}
+
 // userCredentials 接收查询结果
 type userCredentials struct {
 	Uuid         string `gorm:"column:uuid"`
