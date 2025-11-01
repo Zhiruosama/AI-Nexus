@@ -59,7 +59,7 @@ func (d DAO) CreateUser(ctx *gin.Context, userDO *user_do.TableUserDO) error {
 	return nil
 }
 
-// GetPasswordByNickname
+// GetPasswordByNickname 根据用户名获取用户密码
 func (d DAO) GetPasswordByNickname(ctx *gin.Context, nickname string) (uuid string, password string, err error) {
 	sql := `SELECT uuid, password_hash FROM users WHERE nickname = ?`
 	var creds userCredentials
@@ -70,10 +70,10 @@ func (d DAO) GetPasswordByNickname(ctx *gin.Context, nickname string) (uuid stri
 		return "", "", result.Error
 	}
 
-	return creds.Uuid, creds.PasswordHash, nil
+	return creds.uuid, creds.passwordhash, nil
 }
 
-// GetPasswordByEmail
+// GetPasswordByEmail 根据用户邮箱获取用户密码
 func (d DAO) GetPasswordByEmail(ctx *gin.Context, email string) (uuid string, password string, err error) {
 	sql := `SELECT uuid,password_hash FROM users WHERE email = ?`
 	var creds userCredentials
@@ -84,14 +84,14 @@ func (d DAO) GetPasswordByEmail(ctx *gin.Context, email string) (uuid string, pa
 		return "", "", result.Error
 	}
 
-	return creds.Uuid, creds.PasswordHash, nil
+	return creds.uuid, creds.passwordhash, nil
 }
 
 // GetUserByID 根据UUID获取用户
-func (d DAO) GetUserByID(ctx *gin.Context, user_id string) (userDO *user_do.TableUserDO, err error) {
+func (d DAO) GetUserByID(ctx *gin.Context, userid string) (userDO *user_do.TableUserDO, err error) {
 	userDO = &user_do.TableUserDO{}
 	sql := `SELECT uuid,nickname,email,avatar from users WHERE uuid = ?`
-	result := db.GlobalDB.Raw(sql, user_id).Scan(userDO)
+	result := db.GlobalDB.Raw(sql, userid).Scan(userDO)
 	if result.Error != nil {
 		logger.Error(ctx, "GetUserByID query error: %s", result.Error.Error())
 		return nil, result.Error
@@ -101,6 +101,6 @@ func (d DAO) GetUserByID(ctx *gin.Context, user_id string) (userDO *user_do.Tabl
 
 // userCredentials 接收查询结果
 type userCredentials struct {
-	Uuid         string `gorm:"column:uuid"`
-	PasswordHash string `gorm:"column:password_hash"`
+	uuid         string `gorm:"column:uuid"`
+	passwordhash string `gorm:"column:password_hash"`
 }

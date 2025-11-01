@@ -213,15 +213,15 @@ func (s *Service) LoginWithEmailVerifyCode(ctx *gin.Context, query *user_query.L
 }
 
 // GetUserInfo 获取用户信息
-func (s *Service) GetUserInfo(ctx *gin.Context, user_id string) (*user_vo.UserInfoVO, error) {
-	userDO, err := s.UserDao.GetUserByID(ctx, user_id)
+func (s *Service) GetUserInfo(ctx *gin.Context, userid string) (*user_vo.InfoVO, error) {
+	userDO, err := s.UserDao.GetUserByID(ctx, userid)
 
 	if err != nil {
 		logger.Error(ctx, "Get user error: %s", err.Error())
 		return nil, err
 	}
 
-	return &user_vo.UserInfoVO{
+	return &user_vo.InfoVO{
 		UUID:     userDO.UUID,
 		Nickname: userDO.Nickname,
 		Email:    userDO.Email,

@@ -149,8 +149,8 @@ func (uc *Controller) Register(ctx *gin.Context) {
 
 // Login 登录
 func (uc *Controller) Login(ctx *gin.Context) {
-	var query *user_query.LoginQuery = &user_query.LoginQuery{}
-	var loginvo *user_vo.LoginVO = &user_vo.LoginVO{}
+	var query = &user_query.LoginQuery{}
+	var loginvo = &user_vo.LoginVO{}
 
 	query.Email = ctx.DefaultQuery("email", "")
 	query.Nickname = ctx.DefaultQuery("nickname", "")
@@ -200,10 +200,10 @@ func (uc *Controller) Login(ctx *gin.Context) {
 
 // Logout 登出
 func (uc *Controller) Logout(ctx *gin.Context) {
-	user_id, _ := ctx.Get("user_id")
+	UserID, _ := ctx.Get("user_id")
 	rdbClient := rdb.Rdb
 	rCtx := rdb.Ctx
-	_, err := rdbClient.Del(rCtx, user_id.(string)).Result()
+	_, err := rdbClient.Del(rCtx, UserID.(string)).Result()
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    middleware.LogoutFailed,
@@ -220,9 +220,8 @@ func (uc *Controller) Logout(ctx *gin.Context) {
 
 // GetUserInfo 获取当前已登录用户信息
 func (uc *Controller) GetUserInfo(ctx *gin.Context) {
-	var uservo *user_vo.UserInfoVO = &user_vo.UserInfoVO{}
-	user_id, _ := ctx.Get("user_id")
-	uservo, err := uc.UserService.GetUserInfo(ctx, user_id.(string))
+	UserID, _ := ctx.Get("user_id")
+	uservo, err := uc.UserService.GetUserInfo(ctx, UserID.(string))
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    middleware.GetUserInfoFailed,
