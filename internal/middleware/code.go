@@ -34,6 +34,8 @@ const (
 	LogoutFailed
 	// GetUserInfoFailed 获取用户信息失败
 	GetUserInfoFailed
+	// GetAllUserInfoFailed 获取所有用户信息失败
+	GetAllUserInfoFailed
 )
 
 const (

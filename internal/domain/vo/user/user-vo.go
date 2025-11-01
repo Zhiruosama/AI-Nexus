@@ -15,3 +15,20 @@ type InfoVO struct {
 	Email    string `json:"email"`
 	Avatar   string `json:"avatar"`
 }
+
+// ListUserInfoVO 所有用户信息
+type ListUserInfoVO struct {
+	Code    int32         `json:"code"`
+	Message string        `json:"message"`
+	Users   []TableUserVO `json:"users"`
+}
+
+type TableUserVO struct {
+	ID        int64  `json:"id"`
+	UUID      string `json:"uuid"`
+	Nickname  string `json:"nickname"`
+	Avatar    string `json:"avatar"`
+	Email     string `json:"email"`
+	LastLogin string `json:"last_login"`
+	UpdatedAt string `json:"update_at"`
+}

@@ -232,6 +232,21 @@ func (uc *Controller) GetUserInfo(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, uservo)
 }
 
+// GetAllUser 获取所有用户信息
+func (uc *Controller) GetAllUsers(ctx *gin.Context) {
+	users := &user_vo.ListUserInfoVO{}
+
+	err := uc.UserService.GetAllUsers(ctx, users)
+	if err != nil {
+		users.Code = int32(middleware.GetAllUserInfoFailed)
+		users.Message = "Failed to get all user info"
+		users.Users = nil
+		ctx.JSON(http.StatusBadRequest, users)
+	}
+
+	ctx.JSON(http.StatusOK, users)
+}
+
 // generateRandomString 生成指定长度的随机字符串
 func generateRandomString(n int) string {
 	b := make([]byte, n)

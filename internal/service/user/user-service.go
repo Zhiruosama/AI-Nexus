@@ -2,7 +2,9 @@
 package user
 
 import (
+	"encoding/json"
 	"fmt"
+	"time"
 
 	user_dao "github.com/Zhiruosama/ai_nexus/internal/dao/user"
 	user_do "github.com/Zhiruosama/ai_nexus/internal/domain/do/user"
@@ -33,6 +35,8 @@ func NewService() *Service {
 
 const (
 	codePrefix = "code_"
+	infoPrefix = "info_"
+	allinfoKey = "allInfoForUsers"
 )
 
 // SendEmailCode 发送邮箱服务
@@ -243,17 +247,94 @@ func (s *Service) LoginWithEmailVerifyCode(ctx *gin.Context, query *user_query.L
 
 // GetUserInfo 获取用户信息
 func (s *Service) GetUserInfo(ctx *gin.Context, userid string) (*user_vo.InfoVO, error) {
-	userDO, err := s.UserDao.GetUserByID(ctx, userid)
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+	var uvo = &user_vo.InfoVO{}
 
-	if err != nil {
-		logger.Error(ctx, "Get user error: %s", err.Error())
+	info, err := rdbClient.Get(rCtx, infoPrefix+userid).Result()
+	if err != nil && err != redis.Nil {
+		logger.Error(ctx, "Get userinfo from redis error: %s", err.Error())
 		return nil, err
 	}
 
-	return &user_vo.InfoVO{
-		UUID:     userDO.UUID,
-		Nickname: userDO.Nickname,
-		Email:    userDO.Email,
-		Avatar:   userDO.Avatar,
-	}, nil
+	if err == nil && info != "" {
+		if err := json.Unmarshal([]byte(info), uvo); err != nil {
+			logger.Error(ctx, "Unmarshal error in get user info: %s", err.Error())
+			return nil, err
+		}
+		return uvo, nil
+	}
+
+	userDO, err := s.UserDao.GetUserByID(ctx, userid)
+	if err != nil {
+		return nil, err
+	}
+
+	uvo.UUID = userDO.UUID
+	uvo.Nickname = userDO.Nickname
+	uvo.Email = userDO.Email
+	uvo.Avatar = userDO.Avatar
+
+	jsonStr, err := json.Marshal(uvo)
+	if err != nil {
+		logger.Error(ctx, "Marshal error in get user info: %s", err.Error())
+		return nil, err
+	}
+
+	if err = rdbClient.Set(rCtx, infoPrefix+userid, jsonStr, time.Minute*10).Err(); err != nil {
+		logger.Error(ctx, "Set userinfo to redis error: %s", err.Error())
+	}
+
+	return uvo, nil
+}
+
+// GetAllUser 获取所有用户信息
+func (s *Service) GetAllUsers(ctx *gin.Context, users *user_vo.ListUserInfoVO) error {
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+
+	info, err := rdbClient.Get(rCtx, allinfoKey).Result()
+	if err != nil && err != redis.Nil {
+		logger.Error(ctx, "Get all userinfo from redis error: %s", err.Error())
+		return err
+	}
+
+	if err == nil && info != "" {
+		if err := json.Unmarshal([]byte(info), &users.Users); err != nil {
+			logger.Error(ctx, "Unmarshal error in get all user info: %s", err.Error())
+			return err
+		}
+		return nil
+	}
+
+	user_dos, err := s.UserDao.GetAllUsers(ctx)
+	if err != nil {
+		return err
+	}
+
+	users.Code = 200
+	users.Message = "Success get all user info"
+	for _, user_do := range user_dos {
+		users.Users = append(users.Users, user_vo.TableUserVO{
+			ID:        user_do.ID,
+			UUID:      user_do.UUID,
+			Nickname:  user_do.Nickname,
+			Avatar:    user_do.Avatar,
+			Email:     user_do.Email,
+			LastLogin: user_do.LastLogin,
+			UpdatedAt: user_do.UpdatedAt,
+		})
+	}
+
+	jsonStr, err := json.Marshal(users.Users)
+	if err != nil {
+		logger.Error(ctx, "Marshal error in get all user info: %s", err.Error())
+		return err
+	}
+
+	if err = rdbClient.Set(rCtx, allinfoKey, jsonStr, time.Minute*10).Err(); err != nil {
+		logger.Error(ctx, "Set all userinfo to redis error: %s", err.Error())
+	}
+
+	return nil
 }

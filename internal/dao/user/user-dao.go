@@ -92,6 +92,7 @@ func (d DAO) GetPasswordByEmail(ctx *gin.Context, email string) (uuid string, pa
 func (d DAO) GetUserByID(ctx *gin.Context, userid string) (userDO *user_do.TableUserDO, err error) {
 	userDO = &user_do.TableUserDO{}
 	sql := `SELECT uuid,nickname,email,avatar from users WHERE uuid = ?`
+
 	result := db.GlobalDB.Raw(sql, userid).Scan(userDO)
 	if result.Error != nil {
 		logger.Error(ctx, "GetUserByID query error: %s", result.Error.Error())
@@ -111,6 +112,20 @@ func (d DAO) UpdateLoginTime(ctx *gin.Context, userid string) error {
 	}
 
 	return nil
+}
+
+// GetAllUsers 查询所有用户信息
+func (d DAO) GetAllUsers(ctx *gin.Context) ([]*user_do.TableUserDO, error) {
+	var users []*user_do.TableUserDO = make([]*user_do.TableUserDO, 0)
+	sql := `SELECT id, uuid, nickname, avatar, email, last_login, updated_at FROM users`
+
+	result := db.GlobalDB.Raw(sql).Scan(&users)
+	if result.Error != nil {
+		logger.Error(ctx, "GetAllUsers query error: %s", result.Error.Error())
+		return nil, result.Error
+	}
+
+	return users, nil
 }
 
 // userCredentials 接收查询结果

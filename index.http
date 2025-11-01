@@ -36,5 +36,8 @@ GET http://localhost:9000/user/logout HTTP/1.1
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZTJjNGU4NDktNWQ0Mi00ODViLTlmZWUtNDllNjFmZWI0NWM4IiwiaXNzIjoiYWktbmV4dXMtYXV0aCIsImV4cCI6MTc2MjYxNjY1MSwiaWF0IjoxNzYyMDExODUxfQ.xq8HNXi94_o3nBqg5SLYvwGnK9Z_ddk_hJ_mzvHocdU
 
 ### 获取用户信息
-GET http://localhost:9000/user/getuserinfo HTTP/1.1
+GET http://localhost:9000/user/get-userinfo HTTP/1.1
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZTJjNGU4NDktNWQ0Mi00ODViLTlmZWUtNDllNjFmZWI0NWM4IiwiaXNzIjoiYWktbmV4dXMtYXV0aCIsImV4cCI6MTc2MjYxNjY1MSwiaWF0IjoxNzYyMDExODUxfQ.xq8HNXi94_o3nBqg5SLYvwGnK9Z_ddk_hJ_mzvHocdU
+
+### 获取所有用户信息
+GET http://localhost:9000/user/getall-userinfo HTTP/1.1
