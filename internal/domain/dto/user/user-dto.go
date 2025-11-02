@@ -1,6 +1,8 @@
 // Package user 此模块下的dto请求
 package user
 
+import "mime/multipart"
+
 // SendEmailCode 请求发送验证码
 type SendEmailCode struct {
 	NickName       string `json:"nickname,omitempty" form:"nickname,omitempty"`
@@ -16,4 +18,10 @@ type RegisterRequest struct {
 	PassWord       string `json:"password" form:"password"`
 	RepeatPassWord string `json:"repeat_password" form:"repeat_password"`
 	VerifyCode     string `json:"verify_code" form:"verify_code"`
+}
+
+// UpdateInfoRequest 用户更新数据请求
+type UpdateInfoRequest struct {
+	NickName string                `json:"nickname,omitempty" form:"nickname,omitempty"`
+	Avatar   *multipart.FileHeader `json:"avatar,omitempty" form:"avatar,omitempty"`
 }

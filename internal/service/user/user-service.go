@@ -4,6 +4,7 @@ package user
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	user_dao "github.com/Zhiruosama/ai_nexus/internal/dao/user"
@@ -258,7 +259,7 @@ func (s *Service) GetUserInfo(ctx *gin.Context, userid string) (*user_vo.InfoVO,
 	}
 
 	if err == nil && info != "" {
-		if err := json.Unmarshal([]byte(info), uvo); err != nil {
+		if err = json.Unmarshal([]byte(info), uvo); err != nil {
 			logger.Error(ctx, "Unmarshal error in get user info: %s", err.Error())
 			return nil, err
 		}
@@ -300,7 +301,7 @@ func (s *Service) GetAllUsers(ctx *gin.Context, users *user_vo.ListUserInfoVO) e
 	}
 
 	if err == nil && info != "" {
-		if err := json.Unmarshal([]byte(info), &users.Users); err != nil {
+		if err = json.Unmarshal([]byte(info), &users.Users); err != nil {
 			logger.Error(ctx, "Unmarshal error in get all user info: %s", err.Error())
 			return err
 		}
@@ -334,6 +335,24 @@ func (s *Service) GetAllUsers(ctx *gin.Context, users *user_vo.ListUserInfoVO) e
 
 	if err = rdbClient.Set(rCtx, allinfoKey, jsonStr, time.Minute*10).Err(); err != nil {
 		logger.Error(ctx, "Set all userinfo to redis error: %s", err.Error())
+	}
+
+	return nil
+}
+
+// UpdateUserInfo 更新用户信息(名称 头像)
+func (s *Service) UpdateUserInfo(ctx *gin.Context, userid string, req *user_dto.UpdateInfoRequest) error {
+	filname := "avatar" + "-" + userid
+	dst := filepath.Join("/static/avatar", filname)
+	// 文件落盘
+	err := ctx.SaveUploadedFile(req.Avatar, dst)
+	if err != nil {
+		return err
+	}
+
+	err = s.UserDao.UpdateUserInfo(ctx, userid, req.NickName, dst)
+	if err != nil {
+		return err
 	}
 
 	return nil

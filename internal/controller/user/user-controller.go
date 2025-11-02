@@ -247,6 +247,51 @@ func (uc *Controller) GetAllUsers(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, users)
 }
 
+// UpdateUserInfo 更新用户信息
+func (uc *Controller) UpdateUserInfo(ctx *gin.Context) {
+	var req *user_dto.UpdateInfoRequest
+
+	if err := ctx.ShouldBind(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.ParamEmpty,
+			"message": "The input data does not meet the requirements.",
+		})
+		return
+	}
+
+	userIDVal, exists := ctx.Get("user_id")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"code":    middleware.LoginFailed,
+			"message": "unauthorized: user_id missing",
+		})
+		return
+	}
+	userID, _ := userIDVal.(string)
+
+	if req.Avatar == nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.ParamEmpty,
+			"message": "avatar file is required",
+		})
+		return
+	}
+
+	err := uc.UserService.UpdateUserInfo(ctx, userID, req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.UpdateUserInfoFailed,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "update user info successful",
+	})
+}
+
 // generateRandomString 生成指定长度的随机字符串
 func generateRandomString(n int) string {
 	b := make([]byte, n)

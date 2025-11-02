@@ -36,6 +36,8 @@ const (
 	GetUserInfoFailed
 	// GetAllUserInfoFailed 获取所有用户信息失败
 	GetAllUserInfoFailed
+	// UpdateUserInfoFailed 更新用户信息失败
+	UpdateUserInfoFailed
 )
 
 const (

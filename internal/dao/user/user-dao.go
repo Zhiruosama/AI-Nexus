@@ -128,6 +128,19 @@ func (d DAO) GetAllUsers(ctx *gin.Context) ([]*user_do.TableUserDO, error) {
 	return users, nil
 }
 
+// UpdateUserInfo 更新用户信息(名称 头像)
+func (d DAO) UpdateUserInfo(ctx *gin.Context, userid string, nickname string, avatarpath string) error {
+	sql := `UPDATE users SET nickname=?,avatar=? WHERE uuid=?`
+	result := db.GlobalDB.Exec(sql, nickname, avatarpath, userid)
+
+	if result.Error != nil {
+		logger.Error(ctx, "UpdateUserInfo update error: %s", result.Error.Error())
+		return result.Error
+	}
+
+	return nil
+}
+
 // userCredentials 接收查询结果
 type userCredentials struct {
 	UUID         string `gorm:"column:uuid"`

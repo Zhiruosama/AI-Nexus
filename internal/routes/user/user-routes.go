@@ -21,5 +21,6 @@ func InitUserRoutes(r *gin.Engine) {
 		user.GET("/logout", middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.Logout)
 		user.GET("/get-userinfo", middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.GetUserInfo)
 		user.GET("/getall-userinfo", uc.GetAllUsers)
+		user.POST("/update-userinfo", middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.UpdateUserInfo)
 	}
 }
