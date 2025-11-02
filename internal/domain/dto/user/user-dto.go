@@ -24,4 +24,5 @@ type RegisterRequest struct {
 type UpdateInfoRequest struct {
 	NickName string                `json:"nickname,omitempty" form:"nickname,omitempty"`
 	Avatar   *multipart.FileHeader `json:"avatar,omitempty" form:"avatar,omitempty"`
+	Sha256   string                `json:"sha256,omitempty" form:"sha256,omitempty"`
 }

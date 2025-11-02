@@ -2,10 +2,14 @@
 package user
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	user_dao "github.com/Zhiruosama/ai_nexus/internal/dao/user"
@@ -309,13 +313,14 @@ func (s *Service) GetAllUsers(ctx *gin.Context, users *user_vo.ListUserInfoVO) e
 		return nil
 	}
 
-	userDos, err := s.UserDao.GetAllUsers(ctx)
+	userDos, count, err := s.UserDao.GetAllUsers(ctx)
 	if err != nil {
 		return err
 	}
 
 	users.Code = 200
 	users.Message = "Success get all user info"
+	users.Count = count
 	for _, userDo := range userDos {
 		users.Users = append(users.Users, user_vo.TableUserVO{
 			ID:        userDo.ID,
@@ -346,31 +351,63 @@ func (s *Service) UpdateUserInfo(ctx *gin.Context, req *user_dto.UpdateInfoReque
 	UserID, _ := ctx.Get("user_id")
 	userid, _ := UserID.(string)
 
-	ext := filepath.Ext(req.Avatar.Filename)
-	if ext == "" {
-		ext = ".png" //设置默认扩展名
+	var nickName string
+	var path string
+
+	if req.NickName != "" {
+		nickName = req.NickName
 	}
 
-	filname := "avatar" + "-" + userid + ext
-	dst := filepath.Join("/static/avatar", filname)
-	// 文件落盘
-	err := ctx.SaveUploadedFile(req.Avatar, dst)
-	if err != nil {
-		logger.Error(ctx, "Save uploaded file error: %s", err.Error())
-		return err
+	if req.Avatar != nil {
+		if req.Sha256 == "" {
+			return fmt.Errorf("Please upload your file sha256 value")
+		}
+
+		file, _ := req.Avatar.Open()
+		defer file.Close()
+
+		hash := sha256.New()
+		if _, err := io.Copy(hash, file); err != nil {
+			logger.Error(ctx, "Calcute sha256 error: %s", err.Error())
+			return err
+		}
+		calculatedHash := hex.EncodeToString(hash.Sum(nil))
+
+		if calculatedHash != req.Sha256 {
+			return fmt.Errorf("The file destroyed")
+		}
+
+		ext := filepath.Ext(req.Avatar.Filename)
+
+		allowedExts := []string{".png", ".jpg", ".jpeg", ".webp"}
+		isValid := slices.Contains(allowedExts, ext)
+		if !isValid {
+			return fmt.Errorf("unsupported file format: %s, only png, jpg, jpeg, webp are allowed", ext)
+		}
+
+		filname := "avatar" + "-" + userid + ext
+		path = "avatar" + "-" + userid + ".webp"
+		dst := filepath.Join("static", "avatar", filname)
+
+		err := ctx.SaveUploadedFile(req.Avatar, dst)
+		if err != nil {
+			logger.Error(ctx, "Save uploaded file error: %s", err.Error())
+			return err
+		}
+
+		if ext != "webp" {
+			pkg.ProcessImageToWebP(ctx, dst, 90)
+		}
 	}
 
-	err = s.UserDao.UpdateUserInfo(ctx, userid, req.NickName, dst)
-	// 如果更新错误则删除文件
+	err := s.UserDao.UpdateUserInfo(ctx, userid, nickName, path)
 	if err != nil {
-		//删除文件
-		if err = os.Remove(dst); err != nil {
+		if err = os.Remove(path); err != nil {
 			logger.Error(ctx, "Remove file error: %s", err.Error())
 		}
 		return err
 	}
 
-	// 删除缓存
 	if delErr := rdb.Rdb.Del(rdb.Ctx, infoPrefix+userid).Err(); delErr != nil {
 		logger.Error(ctx, "Delete redis cache error: %s", delErr.Error())
 	}

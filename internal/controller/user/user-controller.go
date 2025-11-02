@@ -2,6 +2,7 @@
 package user
 
 import (
+	"fmt"
 	"math/rand"
 	"net/http"
 	"regexp"
@@ -239,7 +240,8 @@ func (uc *Controller) GetAllUsers(ctx *gin.Context) {
 	err := uc.UserService.GetAllUsers(ctx, users)
 	if err != nil {
 		users.Code = int32(middleware.GetAllUserInfoFailed)
-		users.Message = "Failed to get all user info"
+		users.Message = fmt.Sprintf("Failed to get all user info, err: %s", err.Error())
+		users.Count = 0
 		users.Users = nil
 		ctx.JSON(http.StatusBadRequest, users)
 	}
@@ -259,7 +261,7 @@ func (uc *Controller) UpdateUserInfo(ctx *gin.Context) {
 		return
 	}
 
-	if req.Avatar == nil && req.NickName == "" {
+	if req.Avatar == nil && req.NickName == "" && req.Sha256 == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    middleware.ParamEmpty,
 			"message": "The input data does not meet the requirements.",

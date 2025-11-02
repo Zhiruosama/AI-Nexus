@@ -9,6 +9,7 @@ import (
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/db"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/logger"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // DAO 作为 user 模块的 dao 结构体
@@ -115,23 +116,43 @@ func (d DAO) UpdateLoginTime(ctx *gin.Context, userid string) error {
 }
 
 // GetAllUsers 查询所有用户信息
-func (d DAO) GetAllUsers(ctx *gin.Context) ([]*user_do.TableUserDO, error) {
+func (d DAO) GetAllUsers(ctx *gin.Context) ([]*user_do.TableUserDO, int, error) {
 	var users = make([]*user_do.TableUserDO, 0)
 	sql := `SELECT id, uuid, nickname, avatar, email, last_login, updated_at FROM users`
 
 	result := db.GlobalDB.Raw(sql).Scan(&users)
 	if result.Error != nil {
 		logger.Error(ctx, "GetAllUsers query error: %s", result.Error.Error())
-		return nil, result.Error
+		return nil, 0, result.Error
 	}
 
-	return users, nil
+	var count int
+	sql = `SELECT COUNT(*) FROM users`
+
+	result = db.GlobalDB.Raw(sql).Scan(&count)
+	if result.Error != nil {
+		logger.Error(ctx, "GetAllUsers query error: %s", result.Error.Error())
+		return nil, 0, result.Error
+	}
+
+	return users, count, nil
 }
 
-// UpdateUserInfo 更新用户信息(名称 头像)
+// UpdateUserInfo 更新用户信息
 func (d DAO) UpdateUserInfo(ctx *gin.Context, userid string, nickname string, avatarpath string) error {
-	sql := `UPDATE users SET nickname=?,avatar=? WHERE uuid=?`
-	result := db.GlobalDB.Exec(sql, nickname, avatarpath, userid)
+	var sql string
+	var result *gorm.DB
+
+	if avatarpath == "" {
+		sql = `UPDATE users SET nickname=? WHERE uuid=?`
+		result = db.GlobalDB.Exec(sql, nickname, userid)
+	} else if nickname == "" {
+		sql = `UPDATE users SET avatar=? WHERE uuid=?`
+		result = db.GlobalDB.Exec(sql, avatarpath, userid)
+	} else {
+		sql = `UPDATE users SET nickname=?,avatar=? WHERE uuid=?`
+		result = db.GlobalDB.Exec(sql, nickname, avatarpath, userid)
+	}
 
 	if result.Error != nil {
 		logger.Error(ctx, "UpdateUserInfo update error: %s", result.Error.Error())

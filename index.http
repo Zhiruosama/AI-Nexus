@@ -25,7 +25,7 @@ Content-Type: application/json
 
 ### 用户登录
 #### 用户密码
-GET http://localhost:9000/user/login?nickname=murane&password=123456aB HTTP/1.1
+GET http://localhost:9000/user/login?nickname=m123rane&password=123456aB HTTP/1.1
 #### 邮箱密码
 GET http://localhost:9000/user/login?email=18737519552@163.com&password=123456aB HTTP/1.1
 #### 邮箱验证码
@@ -34,6 +34,7 @@ GET http://localhost:9000/user/login?email=1512619344@qq.com&verify_code=4238 HT
 ### 用户登出
 GET http://localhost:9000/user/logout HTTP/1.1
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDY5MTBhNzQtNjhlNy00ZGM5LWEzMzYtZWNhYjUxM2Y1MGE2IiwiaXNzIjoiYWktbmV4dXMtYXV0aCIsImV4cCI6MTc2MjY4NTkxNCwiaWF0IjoxNzYyMDgxMTE0fQ.1K5XJLI57j6SK5VjEjMmxHUMtvIfAmsKUWtrvumg0qs
+
 ### 获取用户信息
 GET http://localhost:9000/user/get-userinfo HTTP/1.1
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDY5MTBhNzQtNjhlNy00ZGM5LWEzMzYtZWNhYjUxM2Y1MGE2IiwiaXNzIjoiYWktbmV4dXMtYXV0aCIsImV4cCI6MTc2MjY4NTkxNCwiaWF0IjoxNzYyMDgxMTE0fQ.1K5XJLI57j6SK5VjEjMmxHUMtvIfAmsKUWtrvumg0qs
@@ -51,8 +52,12 @@ Content-Disposition: form-data; name="nickname"
 
 m123rane
 --WebKitFormBoundary7MA4YWxkTrZu0gW
-Content-Disposition: form-data; name="avatar"; filename="changeavatar.JPG"
+Content-Disposition: form-data; name="avatar"; filename="desktop_0.png"
 Content-Type: image/jpeg
 
-< /root/projects/github/AI-Nexus/changeavatar.jpg
+< /home/chulan/resources/imgs/desktop_0.png
+--WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="sha256"
+
+85fe44187b102998813f25f93b6a530be498e520ba1b55335f00ce0542c66816
 --WebKitFormBoundary7MA4YWxkTrZu0gW--

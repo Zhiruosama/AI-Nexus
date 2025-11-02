@@ -20,6 +20,7 @@ type InfoVO struct {
 type ListUserInfoVO struct {
 	Code    int32         `json:"code"`
 	Message string        `json:"message"`
+	Count   int           `json:"count"`
 	Users   []TableUserVO `json:"users"`
 }
 
