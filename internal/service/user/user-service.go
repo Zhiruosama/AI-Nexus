@@ -4,6 +4,7 @@ package user
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -341,18 +342,37 @@ func (s *Service) GetAllUsers(ctx *gin.Context, users *user_vo.ListUserInfoVO) e
 }
 
 // UpdateUserInfo 更新用户信息(名称 头像)
-func (s *Service) UpdateUserInfo(ctx *gin.Context, userid string, req *user_dto.UpdateInfoRequest) error {
-	filname := "avatar" + "-" + userid
+func (s *Service) UpdateUserInfo(ctx *gin.Context, req *user_dto.UpdateInfoRequest) error {
+	UserID, _ := ctx.Get("user_id")
+	userid, _ := UserID.(string)
+
+	ext := filepath.Ext(req.Avatar.Filename)
+	if ext == "" {
+		ext = ".png" //设置默认扩展名
+	}
+
+	filname := "avatar" + "-" + userid + ext
 	dst := filepath.Join("/static/avatar", filname)
 	// 文件落盘
 	err := ctx.SaveUploadedFile(req.Avatar, dst)
 	if err != nil {
+		logger.Error(ctx, "Save uploaded file error: %s", err.Error())
 		return err
 	}
 
 	err = s.UserDao.UpdateUserInfo(ctx, userid, req.NickName, dst)
+	// 如果更新错误则删除文件
 	if err != nil {
+		//删除文件
+		if err = os.Remove(dst); err != nil {
+			logger.Error(ctx, "Remove file error: %s", err.Error())
+		}
 		return err
+	}
+
+	// 删除缓存
+	if delErr := rdb.Rdb.Del(rdb.Ctx, infoPrefix+userid).Err(); delErr != nil {
+		logger.Error(ctx, "Delete redis cache error: %s", delErr.Error())
 	}
 
 	return nil

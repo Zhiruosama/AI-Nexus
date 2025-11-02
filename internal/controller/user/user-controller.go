@@ -259,25 +259,15 @@ func (uc *Controller) UpdateUserInfo(ctx *gin.Context) {
 		return
 	}
 
-	userIDVal, exists := ctx.Get("user_id")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"code":    middleware.LoginFailed,
-			"message": "unauthorized: user_id missing",
-		})
-		return
-	}
-	userID, _ := userIDVal.(string)
-
-	if req.Avatar == nil {
+	if req.Avatar == nil && req.NickName == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    middleware.ParamEmpty,
-			"message": "avatar file is required",
+			"message": "The input data does not meet the requirements.",
 		})
 		return
 	}
 
-	err := uc.UserService.UpdateUserInfo(ctx, userID, req)
+	err := uc.UserService.UpdateUserInfo(ctx, req)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    middleware.UpdateUserInfoFailed,

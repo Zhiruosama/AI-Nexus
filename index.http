@@ -42,17 +42,17 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDY5M
 GET http://localhost:9000/user/getall-userinfo HTTP/1.1
 
 ### 更新用户信息
-POST http://localhost:9000/user/update-userinfo
+PUT http://localhost:9000/user/update-userinfo
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZDY5MTBhNzQtNjhlNy00ZGM5LWEzMzYtZWNhYjUxM2Y1MGE2IiwiaXNzIjoiYWktbmV4dXMtYXV0aCIsImV4cCI6MTc2MjY4NTkxNCwiaWF0IjoxNzYyMDgxMTE0fQ.1K5XJLI57j6SK5VjEjMmxHUMtvIfAmsKUWtrvumg0qs
 Content-Type: multipart/form-data; boundary=WebKitFormBoundary7MA4YWxkTrZu0gW
 
 --WebKitFormBoundary7MA4YWxkTrZu0gW
 Content-Disposition: form-data; name="nickname"
 
-m333rane
+m123rane
 --WebKitFormBoundary7MA4YWxkTrZu0gW
 Content-Disposition: form-data; name="avatar"; filename="changeavatar.JPG"
 Content-Type: image/jpeg
 
-@/root/projects/github/AI-Nexus/changeavatar.JPG
+< /root/projects/github/AI-Nexus/changeavatar.jpg
 --WebKitFormBoundary7MA4YWxkTrZu0gW--
