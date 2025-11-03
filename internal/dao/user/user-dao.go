@@ -2,7 +2,6 @@
 package user
 
 import (
-	"fmt"
 	"time"
 
 	user_do "github.com/Zhiruosama/ai_nexus/internal/domain/do/user"
@@ -17,9 +16,9 @@ type DAO struct {
 }
 
 // SendEmailCode 发送邮箱方法
-func (d DAO) SendEmailCode(ctx *gin.Context, do *user_do.TableUserVerificationCodesDO) error {
-	sql := fmt.Sprintf("INSERT INTO user_verification_codes (`email`, `code`, `purpose`) VALUES ('%s', '%s', %d)", do.Email, do.Code, do.Purpose)
-	result := db.GlobalDB.Exec(sql)
+func (d *DAO) SendEmailCode(ctx *gin.Context, do *user_do.TableUserVerificationCodesDO) error {
+	sql := `INSERT INTO user_verification_codes (email, code, purpose) VALUES (?, ?, ?)`
+	result := db.GlobalDB.Exec(sql, do.Email, do.Code, do.Purpose)
 
 	if result.Error != nil {
 		logger.Error(ctx, "SendEmailCodeDAO insert error: %s", result.Error.Error())
@@ -29,7 +28,7 @@ func (d DAO) SendEmailCode(ctx *gin.Context, do *user_do.TableUserVerificationCo
 }
 
 // CheckUserExists 检查用户是否存在
-func (d DAO) CheckUserExists(ctx *gin.Context, email string) (bool, error) {
+func (d *DAO) CheckUserExists(ctx *gin.Context, email string) (bool, error) {
 	var count int64
 	sql := `SELECT COUNT(*) FROM users WHERE email = ?`
 	result := db.GlobalDB.Raw(sql, email).Scan(&count)
@@ -43,7 +42,7 @@ func (d DAO) CheckUserExists(ctx *gin.Context, email string) (bool, error) {
 }
 
 // CreateUser 创建用户
-func (d DAO) CreateUser(ctx *gin.Context, userDO *user_do.TableUserDO) error {
+func (d *DAO) CreateUser(ctx *gin.Context, userDO *user_do.TableUserDO) error {
 	sql := `INSERT INTO users (uuid, avatar, nickname, email, password_hash) VALUES (?, ?, ?, ?, ?)`
 	result := db.GlobalDB.Exec(sql,
 		userDO.UUID,
@@ -62,7 +61,7 @@ func (d DAO) CreateUser(ctx *gin.Context, userDO *user_do.TableUserDO) error {
 }
 
 // GetPasswordByNickname 根据用户名获取用户密码
-func (d DAO) GetPasswordByNickname(ctx *gin.Context, nickname string) (uuid string, password string, err error) {
+func (d *DAO) GetPasswordByNickname(ctx *gin.Context, nickname string) (uuid string, password string, err error) {
 	sql := `SELECT uuid, password_hash FROM users WHERE nickname = ?`
 	var creds userCredentials
 	result := db.GlobalDB.Raw(sql, nickname).Scan(&creds)
@@ -76,7 +75,7 @@ func (d DAO) GetPasswordByNickname(ctx *gin.Context, nickname string) (uuid stri
 }
 
 // GetPasswordByEmail 根据用户邮箱获取用户密码
-func (d DAO) GetPasswordByEmail(ctx *gin.Context, email string) (uuid string, password string, err error) {
+func (d *DAO) GetPasswordByEmail(ctx *gin.Context, email string) (uuid string, password string, err error) {
 	sql := `SELECT uuid,password_hash FROM users WHERE email = ?`
 	var creds userCredentials
 	result := db.GlobalDB.Raw(sql, email).Scan(&creds)
@@ -90,7 +89,7 @@ func (d DAO) GetPasswordByEmail(ctx *gin.Context, email string) (uuid string, pa
 }
 
 // GetUserByID 根据UUID获取用户
-func (d DAO) GetUserByID(ctx *gin.Context, userid string) (userDO *user_do.TableUserDO, err error) {
+func (d *DAO) GetUserByID(ctx *gin.Context, userid string) (userDO *user_do.TableUserDO, err error) {
 	userDO = &user_do.TableUserDO{}
 	sql := `SELECT uuid,nickname,email,avatar from users WHERE uuid = ?`
 
@@ -103,7 +102,7 @@ func (d DAO) GetUserByID(ctx *gin.Context, userid string) (userDO *user_do.Table
 }
 
 // UpdateLoginTime 更新登录时间戳
-func (d DAO) UpdateLoginTime(ctx *gin.Context, userid string) error {
+func (d *DAO) UpdateLoginTime(ctx *gin.Context, userid string) error {
 	sql := `UPDATE users SET last_login=? WHERE uuid=?`
 	result := db.GlobalDB.Exec(sql, time.Now(), userid)
 
@@ -116,9 +115,9 @@ func (d DAO) UpdateLoginTime(ctx *gin.Context, userid string) error {
 }
 
 // GetAllUsers 查询所有用户信息
-func (d DAO) GetAllUsers(ctx *gin.Context) ([]*user_do.TableUserDO, int, error) {
+func (d *DAO) GetAllUsers(ctx *gin.Context) ([]*user_do.TableUserDO, int, error) {
 	var users = make([]*user_do.TableUserDO, 0)
-	sql := `SELECT id, uuid, nickname, avatar, email, last_login, updated_at FROM users`
+	sql := `SELECT id, uuid, nickname, avatar, email, last_login, created_at, updated_at FROM users`
 
 	result := db.GlobalDB.Raw(sql).Scan(&users)
 	if result.Error != nil {
@@ -126,20 +125,11 @@ func (d DAO) GetAllUsers(ctx *gin.Context) ([]*user_do.TableUserDO, int, error) 
 		return nil, 0, result.Error
 	}
 
-	var count int
-	sql = `SELECT COUNT(*) FROM users`
-
-	result = db.GlobalDB.Raw(sql).Scan(&count)
-	if result.Error != nil {
-		logger.Error(ctx, "GetAllUsers query error: %s", result.Error.Error())
-		return nil, 0, result.Error
-	}
-
-	return users, count, nil
+	return users, len(users), nil
 }
 
 // UpdateUserInfo 更新用户信息
-func (d DAO) UpdateUserInfo(ctx *gin.Context, userid string, nickname string, avatarpath string) error {
+func (d *DAO) UpdateUserInfo(ctx *gin.Context, userid string, nickname string, avatarpath string) error {
 	var sql string
 	var result *gorm.DB
 
@@ -156,6 +146,43 @@ func (d DAO) UpdateUserInfo(ctx *gin.Context, userid string, nickname string, av
 
 	if result.Error != nil {
 		logger.Error(ctx, "UpdateUserInfo update error: %s", result.Error.Error())
+		return result.Error
+	}
+
+	return nil
+}
+
+// GetUserAvatar 根据UUID获取用户头像路径
+func (d *DAO) GetUserAvatar(ctx *gin.Context, uuid string) (string, error) {
+	var avatar string
+	sql := `SELECT avatar FROM users WHERE uuid = ?`
+
+	result := db.GlobalDB.Raw(sql, uuid).Scan(&avatar)
+	if result.Error != nil {
+		logger.Error(ctx, "GetUserAvatar query error: %s", result.Error.Error())
+		return "", result.Error
+	}
+
+	return avatar, nil
+}
+
+// DestroyUser 注销用户
+func (d *DAO) DestroyUser(ctx *gin.Context, uuid string) error {
+	sql := `DELETE uvc FROM user_verification_codes uvc
+  INNER JOIN users u ON uvc.email = u.email
+  WHERE u.uuid = ?`
+
+	result := db.GlobalDB.Exec(sql, uuid)
+	if result.Error != nil {
+		logger.Error(ctx, "destroy uvc error: %s", result.Error.Error())
+		return result.Error
+	}
+
+	sql = `DELETE FROM users WHERE uuid = ?`
+
+	result = db.GlobalDB.Exec(sql, uuid)
+	if result.Error != nil {
+		logger.Error(ctx, "destroy user error: %s", result.Error.Error())
 		return result.Error
 	}
 

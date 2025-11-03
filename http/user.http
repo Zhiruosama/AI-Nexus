@@ -1,0 +1,64 @@
+@token = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYjE0ZTYxYjgtZmUwNS00NGVkLWIyYTYtNDVkMWI5MWEyYWQzIiwiaXNzIjoiYWktbmV4dXMtYXV0aCIsImV4cCI6MTc2Mjc1Njg3NiwiaWF0IjoxNzYyMTUyMDc2fQ.mlHsXvvjP5kmJdUOc29V70_4nq4sONsd-qZ7ylrco_A
+
+### 用户模块
+#### 发送验证码
+POST http://127.0.0.1:9000/user/send-code HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+email=18737519552@163.com&purpose=1
+
+### 用户注册
+POST http://localhost:9000/user/register HTTP/1.1
+Content-Type: application/json
+
+{
+    "nickname": "chulan",
+    "email": "18737519552@163.com",
+    "password": "123456aB",
+    "repeat_password": "123456aB",
+    "verify_code": "6b2e",
+    "purpose": "1"
+}
+
+### 用户登录
+#### 用户密码
+GET http://localhost:9000/user/login?nickname=chulan&password=123456aB HTTP/1.1
+#### 邮箱密码
+GET http://localhost:9000/user/login?email=18737519552@163.com&password=123456aB HTTP/1.1
+#### 邮箱验证码
+GET http://localhost:9000/user/login?email=18737519552@163.com&verify_code=eb67&purpose=2 HTTP/1.1
+
+### 用户登出
+GET http://localhost:9000/user/logout HTTP/1.1
+Authorization: {{token}}
+
+### 获取用户信息
+GET http://localhost:9000/user/get-userinfo HTTP/1.1
+Authorization: {{token}}
+
+### 获取所有用户信息
+GET http://localhost:9000/user/getall-userinfo HTTP/1.1
+
+### 更新用户信息
+PUT http://localhost:9000/user/update-userinfo HTTP/1.1
+Authorization: {{token}}
+Content-Type: multipart/form-data; boundary=WebKitFormBoundary7MA4YWxkTrZu0gW
+
+--WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="nickname"
+
+chulanChange
+--WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="avatar"; filename="desktop_0.png"
+Content-Type: image/png
+
+< /home/chulan/resources/imgs/desktop_0.png
+--WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="sha256"
+
+85fe44187b102998813f25f93b6a530be498e520ba1b55335f00ce0542c66816
+--WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 注销用户
+DELETE http://localhost:9000/user/destroy HTTP/1.1
+Authorization: {{token}}

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	user_dao "github.com/Zhiruosama/ai_nexus/internal/dao/user"
@@ -56,7 +57,7 @@ func (s *Service) SendEmailCode(ctx *gin.Context, dto *user_dto.SendEmailCode) e
 		return err
 	}
 	do.Code = code
-	do.Purpose = 1
+	do.Purpose = int8(dto.Purpose)
 
 	err = s.UserDao.SendEmailCode(ctx, do)
 	if err != nil {
@@ -126,8 +127,12 @@ func (s *Service) LoginWithNicknamePassword(ctx *gin.Context, query *user_query.
 	rdbClient := rdb.Rdb
 	rCtx := rdb.Ctx
 	uuid, password, err := s.UserDao.GetPasswordByNickname(ctx, query.Nickname)
+
 	if err != nil {
 		return err
+	}
+	if uuid == "" || password == "" {
+		return fmt.Errorf("user not exists")
 	}
 
 	_, err = rdbClient.Get(rCtx, uuid).Result()
@@ -169,9 +174,13 @@ func (s *Service) LoginWithNicknamePassword(ctx *gin.Context, query *user_query.
 func (s *Service) LoginWithEmailPassword(ctx *gin.Context, query *user_query.LoginQuery, vo *user_vo.LoginVO) error {
 	rdbClient := rdb.Rdb
 	rCtx := rdb.Ctx
+
 	uuid, password, err := s.UserDao.GetPasswordByEmail(ctx, query.Email)
 	if err != nil {
 		return err
+	}
+	if uuid == "" || password == "" {
+		return fmt.Errorf("user not exists")
 	}
 
 	_, err = rdbClient.Get(rCtx, uuid).Result()
@@ -227,8 +236,10 @@ func (s *Service) LoginWithEmailVerifyCode(ctx *gin.Context, query *user_query.L
 
 	uuid, _, err := s.UserDao.GetPasswordByEmail(ctx, query.Email)
 	if err != nil {
-		logger.Error(ctx, "Get uuid error: %s", err.Error())
 		return err
+	}
+	if uuid == "" {
+		return fmt.Errorf("user not exists")
 	}
 
 	vo.JWTToken, err = middleware.GenerateToken(uuid)
@@ -245,6 +256,11 @@ func (s *Service) LoginWithEmailVerifyCode(ctx *gin.Context, query *user_query.L
 
 	err = s.UserDao.UpdateLoginTime(ctx, uuid)
 	if err != nil {
+		return err
+	}
+
+	if err = rdbClient.Del(rCtx, codePrefix+query.Email).Err(); err != nil {
+		logger.Error(ctx, "Remove code in redis error: %s", err.Error())
 		return err
 	}
 
@@ -310,6 +326,9 @@ func (s *Service) GetAllUsers(ctx *gin.Context, users *user_vo.ListUserInfoVO) e
 			logger.Error(ctx, "Unmarshal error in get all user info: %s", err.Error())
 			return err
 		}
+		users.Code = 200
+		users.Message = "Success get all user info"
+		users.Count = 0
 		return nil
 	}
 
@@ -329,6 +348,7 @@ func (s *Service) GetAllUsers(ctx *gin.Context, users *user_vo.ListUserInfoVO) e
 			Avatar:    userDo.Avatar,
 			Email:     userDo.Email,
 			LastLogin: userDo.LastLogin,
+			CreatedAt: userDo.CreatedAt,
 			UpdatedAt: userDo.UpdatedAt,
 		})
 	}
@@ -353,6 +373,7 @@ func (s *Service) UpdateUserInfo(ctx *gin.Context, req *user_dto.UpdateInfoReque
 
 	var nickName string
 	var path string
+	var dst string
 
 	if req.NickName != "" {
 		nickName = req.NickName
@@ -360,21 +381,29 @@ func (s *Service) UpdateUserInfo(ctx *gin.Context, req *user_dto.UpdateInfoReque
 
 	if req.Avatar != nil {
 		if req.Sha256 == "" {
-			return fmt.Errorf("Please upload your file sha256 value")
+			return fmt.Errorf("please upload your file sha256 value")
 		}
 
-		file, _ := req.Avatar.Open()
-		defer file.Close()
+		file, err := req.Avatar.Open()
+		if err != nil {
+			logger.Error(ctx, "Open uploaded file error: %s", err.Error())
+			return err
+		}
+		defer func() {
+			if closeErr := file.Close(); closeErr != nil {
+				logger.Error(ctx, "Close uploaded file error: %s", closeErr.Error())
+			}
+		}()
 
 		hash := sha256.New()
 		if _, err := io.Copy(hash, file); err != nil {
-			logger.Error(ctx, "Calcute sha256 error: %s", err.Error())
+			logger.Error(ctx, "calcute sha256 error: %s", err.Error())
 			return err
 		}
 		calculatedHash := hex.EncodeToString(hash.Sum(nil))
 
 		if calculatedHash != req.Sha256 {
-			return fmt.Errorf("The file destroyed")
+			return fmt.Errorf("the file destroyed")
 		}
 
 		ext := filepath.Ext(req.Avatar.Filename)
@@ -385,31 +414,82 @@ func (s *Service) UpdateUserInfo(ctx *gin.Context, req *user_dto.UpdateInfoReque
 			return fmt.Errorf("unsupported file format: %s, only png, jpg, jpeg, webp are allowed", ext)
 		}
 
-		filname := "avatar" + "-" + userid + ext
-		path = "avatar" + "-" + userid + ".webp"
-		dst := filepath.Join("static", "avatar", filname)
+		filname := "avatar-" + userid + ext
+		dst = filepath.Join("static", "avatar", filname)
 
-		err := ctx.SaveUploadedFile(req.Avatar, dst)
+		err = ctx.SaveUploadedFile(req.Avatar, dst)
 		if err != nil {
 			logger.Error(ctx, "Save uploaded file error: %s", err.Error())
 			return err
 		}
 
-		if ext != "webp" {
-			pkg.ProcessImageToWebP(ctx, dst, 90)
+		if ext != ".webp" {
+			ok := pkg.ProcessImageToWebP(ctx, dst, 90)
+			if !ok {
+				if removeErr := os.Remove(dst); removeErr != nil {
+					logger.Error(ctx, "Remove failed conversion file error: %s", removeErr.Error())
+				}
+				return fmt.Errorf("failed to convert image to webp format")
+			}
 		}
+		finalFileName := "avatar-" + userid + ".webp"
+		path = filepath.Join("/static/avatar", finalFileName)
+		dst = filepath.Join("static", "avatar", finalFileName)
 	}
 
 	err := s.UserDao.UpdateUserInfo(ctx, userid, nickName, path)
 	if err != nil {
-		if err = os.Remove(path); err != nil {
-			logger.Error(ctx, "Remove file error: %s", err.Error())
+		if dst != "" {
+			if errs := os.Remove(dst); errs != nil {
+				logger.Error(ctx, "Remove file error: %s", errs.Error())
+			}
 		}
 		return err
 	}
 
 	if delErr := rdb.Rdb.Del(rdb.Ctx, infoPrefix+userid).Err(); delErr != nil {
 		logger.Error(ctx, "Delete redis cache error: %s", delErr.Error())
+	}
+	if delErr := rdb.Rdb.Del(rdb.Ctx, allinfoKey).Err(); delErr != nil {
+		logger.Error(ctx, "Delete all users cache error: %s", delErr.Error())
+	}
+
+	return nil
+}
+
+// DestroyUser 注销用户
+func (s *Service) DestroyUser(ctx *gin.Context) error {
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+
+	uuidV, _ := ctx.Get("user_id")
+	uuid := uuidV.(string)
+
+	path, err := s.UserDao.GetUserAvatar(ctx, uuid)
+	if err != nil {
+		return err
+	}
+
+	err = s.UserDao.DestroyUser(ctx, uuid)
+	if err != nil {
+		return err
+	}
+
+	if rdberr := rdbClient.Del(rCtx, uuid).Err(); rdberr != nil {
+		logger.Error(ctx, "Remove user form redis error: %s", rdberr.Error())
+	}
+
+	if rdberr := rdbClient.Del(rCtx, infoPrefix+uuid).Err(); rdberr != nil {
+		logger.Error(ctx, "Remove user form redis error: %s", rdberr.Error())
+	}
+
+	if rdberr := rdbClient.Del(rCtx, allinfoKey).Err(); rdberr != nil {
+		logger.Error(ctx, "Remove user form redis error: %s", rdberr.Error())
+	}
+
+	dst := strings.TrimPrefix(path, "/")
+	if err := os.Remove(dst); err != nil && !os.IsNotExist(err) {
+		logger.Warn(ctx, "Remove avatar file error (non-critical): %s", err.Error())
 	}
 
 	return nil

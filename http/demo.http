@@ -1,0 +1,5 @@
+### demo示例
+GET http://127.0.0.1:9000/demo/get-message?id=2 HTTP/1.1
+
+### panic测试
+GET http://127.0.0.1:9000/demo/panic-test HTTP/1.1

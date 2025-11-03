@@ -5,10 +5,8 @@ import "mime/multipart"
 
 // SendEmailCode 请求发送验证码
 type SendEmailCode struct {
-	NickName       string `json:"nickname,omitempty" form:"nickname,omitempty"`
-	Email          string `json:"email" form:"email"`
-	PassWord       string `json:"password" form:"password"`
-	RepeatPassWord string `json:"repeat_password" form:"repeat_password"`
+	Purpose int    `json:"purpose" form:"purpose"`
+	Email   string `json:"email" form:"email"`
 }
 
 // RegisterRequest 用户注册请求
@@ -18,6 +16,7 @@ type RegisterRequest struct {
 	PassWord       string `json:"password" form:"password"`
 	RepeatPassWord string `json:"repeat_password" form:"repeat_password"`
 	VerifyCode     string `json:"verify_code" form:"verify_code"`
+	Purpose        string `json:"purpose" form:"purpose"`
 }
 
 // UpdateInfoRequest 用户更新数据请求

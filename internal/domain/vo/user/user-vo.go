@@ -32,5 +32,6 @@ type TableUserVO struct {
 	Avatar    string `json:"avatar"`
 	Email     string `json:"email"`
 	LastLogin string `json:"last_login"`
+	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"update_at"`
 }

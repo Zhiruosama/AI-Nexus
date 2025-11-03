@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net/http"
 	"regexp"
+	"strconv"
 	"time"
 
 	user_dto "github.com/Zhiruosama/ai_nexus/internal/domain/dto/user"
@@ -47,14 +48,11 @@ var (
 func (uc *Controller) SendEmailCode(ctx *gin.Context) {
 	rdbClient := rdb.Rdb
 	rCtx := rdb.Ctx
-	defaultName := nickNamePrefix + generateRandomString(5)
 
-	nickName := ctx.DefaultPostForm("nickname", defaultName)
 	email := ctx.DefaultPostForm("email", "")
-	password := ctx.DefaultPostForm("password", "-1")
-	repeatPassword := ctx.DefaultPostForm("repeat_password", "-1")
+	purposeStr := ctx.DefaultPostForm("purpose", "")
 
-	if email == "" || password == "-1" || repeatPassword == "=1" {
+	if email == "" || purposeStr == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    middleware.ParamEmpty,
 			"message": "The input data does not meet the requirements.",
@@ -70,22 +68,6 @@ func (uc *Controller) SendEmailCode(ctx *gin.Context) {
 		return
 	}
 
-	if password != repeatPassword {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    middleware.PasswordMismatch,
-			"message": "The entered password was not equal.",
-		})
-		return
-	}
-
-	if !passwordValidator.MatchString(password) {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    middleware.PasswordInvalid,
-			"message": "Password format is invalid. It must be 6-20 characters long and contain only letters, numbers, and symbols: !@#$%^&*",
-		})
-		return
-	}
-
 	_, err := rdbClient.Get(rCtx, codePrefix+email).Result()
 	if err == nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -95,11 +77,18 @@ func (uc *Controller) SendEmailCode(ctx *gin.Context) {
 		return
 	}
 
+	purpose, err := strconv.Atoi(purposeStr)
+	if err != nil || (purpose != 1 && purpose != 2) {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.PurposeInvalid,
+			"message": "Invalid purpose value",
+		})
+		return
+	}
+
 	dto := &user_dto.SendEmailCode{
-		NickName:       nickName,
-		Email:          email,
-		PassWord:       password,
-		RepeatPassWord: repeatPassword,
+		Purpose: purpose,
+		Email:   email,
 	}
 
 	err = uc.UserService.SendEmailCode(ctx, dto)
@@ -128,8 +117,48 @@ func (uc *Controller) Register(ctx *gin.Context) {
 		return
 	}
 
+	if req.Purpose != "1" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.ParamEmpty,
+			"message": "The purpose is not register",
+		})
+		return
+	}
+
 	if req.NickName == "" {
 		req.NickName = nickNamePrefix + generateRandomString(5)
+	}
+
+	if req.Email == "" || req.PassWord == "" || req.RepeatPassWord == "" || req.VerifyCode == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.ParamEmpty,
+			"message": "The input data does not meet the requirements.",
+		})
+		return
+	}
+
+	if !emailValidator.MatchString(req.Email) {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.EmailInvalid,
+			"message": "email format is invalid.",
+		})
+		return
+	}
+
+	if req.PassWord != req.RepeatPassWord {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.PasswordMismatch,
+			"message": "The entered password was not equal.",
+		})
+		return
+	}
+
+	if !passwordValidator.MatchString(req.PassWord) {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.PasswordInvalid,
+			"message": "Password format is invalid. It must be 6-20 characters long and contain only letters, numbers, and symbols: !@#$%^&*",
+		})
+		return
 	}
 
 	// 调用服务层进行注册
@@ -157,6 +186,7 @@ func (uc *Controller) Login(ctx *gin.Context) {
 	query.Nickname = ctx.DefaultQuery("nickname", "")
 	query.PassWord = ctx.DefaultQuery("password", "")
 	query.VerifyCode = ctx.DefaultQuery("verify_code", "")
+	query.Purpose = ctx.DefaultQuery("purpose", "")
 
 	if query.Email == "" && query.Nickname == "" {
 		loginvo.Code = int32(middleware.UserInformationEmpty)
@@ -180,6 +210,15 @@ func (uc *Controller) Login(ctx *gin.Context) {
 	if query.Nickname != "" && query.PassWord != "" {
 		err = uc.UserService.LoginWithNicknamePassword(ctx, query, loginvo)
 	} else if query.Email != "" && query.VerifyCode != "" {
+
+		if query.Purpose != "2" {
+			loginvo.Code = int32(middleware.LoginPurposeError)
+			loginvo.Message = "The purpose login error"
+			loginvo.JWTToken = ""
+			ctx.JSON(http.StatusBadRequest, loginvo)
+			return
+		}
+
 		err = uc.UserService.LoginWithEmailVerifyCode(ctx, query, loginvo)
 	} else if query.Email != "" && query.PassWord != "" {
 		err = uc.UserService.LoginWithEmailPassword(ctx, query, loginvo)
@@ -204,7 +243,17 @@ func (uc *Controller) Logout(ctx *gin.Context) {
 	UserID, _ := ctx.Get("user_id")
 	rdbClient := rdb.Rdb
 	rCtx := rdb.Ctx
-	_, err := rdbClient.Del(rCtx, UserID.(string)).Result()
+
+	_, err := rdbClient.Get(rCtx, UserID.(string)).Result()
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{
+			"code":    http.StatusOK,
+			"message": "user already logged out",
+		})
+		return
+	}
+
+	_, err = rdbClient.Del(rCtx, UserID.(string)).Result()
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    middleware.LogoutFailed,
@@ -222,6 +271,7 @@ func (uc *Controller) Logout(ctx *gin.Context) {
 // GetUserInfo 获取当前已登录用户信息
 func (uc *Controller) GetUserInfo(ctx *gin.Context) {
 	UserID, _ := ctx.Get("user_id")
+
 	uservo, err := uc.UserService.GetUserInfo(ctx, UserID.(string))
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -244,6 +294,7 @@ func (uc *Controller) GetAllUsers(ctx *gin.Context) {
 		users.Count = 0
 		users.Users = nil
 		ctx.JSON(http.StatusBadRequest, users)
+		return
 	}
 
 	ctx.JSON(http.StatusOK, users)
@@ -281,6 +332,24 @@ func (uc *Controller) UpdateUserInfo(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"code":    http.StatusOK,
 		"message": "update user info successful",
+	})
+}
+
+// DestroyUser 注销用户
+func (uc *Controller) DestroyUser(ctx *gin.Context) {
+	err := uc.UserService.DestroyUser(ctx)
+
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.DestoryUserFailed,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "delete user info successful",
 	})
 }
 

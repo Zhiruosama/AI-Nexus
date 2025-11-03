@@ -18,6 +18,8 @@ const (
 	RegisterFailed
 	// VerifyCodeInvalid 验证码无效
 	VerifyCodeInvalid
+	// PurposeInvalid 验证码目的错误
+	PurposeInvalid
 	// UserAlreadyExist 用户已存在
 	UserAlreadyExist
 	// LoginParamError 登录参数错误
@@ -38,6 +40,10 @@ const (
 	GetAllUserInfoFailed
 	// UpdateUserInfoFailed 更新用户信息失败
 	UpdateUserInfoFailed
+	// DestoryUserFailed 删除用户失败
+	DestoryUserFailed
+	// LoginPurposeError 登录目的错误
+	LoginPurposeError
 )
 
 const (

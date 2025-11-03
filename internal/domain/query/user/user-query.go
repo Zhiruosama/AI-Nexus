@@ -7,4 +7,5 @@ type LoginQuery struct {
 	Nickname   string `form:"nickname,omitempty"`
 	PassWord   string `form:"password,omitempty"`
 	VerifyCode string `form:"verify_code,omitempty"`
+	Purpose    string `form:"purpose,omitempty"`
 }
