@@ -17,7 +17,7 @@ func InitUserRoutes(r *gin.Engine) {
 	{
 		user.POST("/send-code", uc.SendEmailCode)
 		user.POST("/register", uc.Register)
-		user.GET("/login", uc.Login)
+		user.POST("/login", uc.Login)
 		user.GET("/logout", middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.Logout)
 		user.GET("/get-userinfo", middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.GetUserInfo)
 		user.GET("/getall-userinfo", uc.GetAllUsers)

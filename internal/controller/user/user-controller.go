@@ -182,11 +182,12 @@ func (uc *Controller) Login(ctx *gin.Context) {
 	var query = &user_query.LoginQuery{}
 	var loginvo = &user_vo.LoginVO{}
 
-	query.Email = ctx.DefaultQuery("email", "")
-	query.Nickname = ctx.DefaultQuery("nickname", "")
-	query.PassWord = ctx.DefaultQuery("password", "")
-	query.VerifyCode = ctx.DefaultQuery("verify_code", "")
-	query.Purpose = ctx.DefaultQuery("purpose", "")
+	if err := ctx.ShouldBind(query); err != nil {
+		loginvo.Code = int32(middleware.ParamEmpty)
+		loginvo.Message = "The input data does not meet the requirements."
+		ctx.JSON(http.StatusBadRequest, loginvo)
+		return
+	}
 
 	if query.Email == "" && query.Nickname == "" {
 		loginvo.Code = int32(middleware.UserInformationEmpty)

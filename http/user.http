@@ -5,29 +5,49 @@
 POST http://127.0.0.1:9000/user/send-code HTTP/1.1
 Content-Type: application/x-www-form-urlencoded
 
-email=18737519552@163.com&purpose=1
+email=1512619344@qq.com&purpose=1
 
 ### 用户注册
 POST http://localhost:9000/user/register HTTP/1.1
 Content-Type: application/json
 
 {
-    "nickname": "chulan",
-    "email": "18737519552@163.com",
+    "nickname": "murane",
+    "email": "1512619344@qq.com",
     "password": "123456aB",
     "repeat_password": "123456aB",
-    "verify_code": "6b2e",
+    "verify_code": "caaa",
     "purpose": "1"
 }
 
 ### 用户登录
 #### 用户密码
-GET http://localhost:9000/user/login?nickname=chulan&password=123456aB HTTP/1.1
-#### 邮箱密码
-GET http://localhost:9000/user/login?email=18737519552@163.com&password=123456aB HTTP/1.1
-#### 邮箱验证码
-GET http://localhost:9000/user/login?email=18737519552@163.com&verify_code=eb67&purpose=2 HTTP/1.1
+POST http://localhost:9000/user/login
+Content-Type: application/json
 
+{
+  "nickname": "murane",
+  "password": "123456aB"
+}
+#### 邮箱密码
+POST http://localhost:9000/user/login
+Content-Type: application/json
+
+{
+  "email": "151291344@qq.com",
+  "password": "123456aB"
+}
+#### 邮箱验证码
+POST http://localhost:9000/user/login
+Content-Type: application/json
+
+{
+  "email": "151291344@qq.com",
+  "verify_code": "caaa",
+  "purpose": "2"
+}
+
+POST http://localhost:9000/user/login
 ### 用户登出
 GET http://localhost:9000/user/logout HTTP/1.1
 Authorization: {{token}}
