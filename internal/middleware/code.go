@@ -44,6 +44,8 @@ const (
 	DestoryUserFailed
 	// LoginPurposeError 登录目的错误
 	LoginPurposeError
+	// ResetPasswordPurposeError 重置密码目的错误
+	ResetPasswordPurposeError
 )
 
 const (

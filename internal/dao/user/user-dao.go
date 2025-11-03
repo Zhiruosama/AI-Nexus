@@ -166,6 +166,18 @@ func (d *DAO) GetUserAvatar(ctx *gin.Context, uuid string) (string, error) {
 	return avatar, nil
 }
 
+// ResetUserPassword 更新用户密码
+func (d *DAO) ResetUserPassword(ctx *gin.Context, uuid string, newpassword string) error {
+	sql := `UPDATE users SET password_hash=? WHERE uuid=?`
+	result := db.GlobalDB.Exec(sql, newpassword, uuid)
+	if result.Error != nil {
+		logger.Error(ctx, "UpdateUserPassword update error: %s", result.Error.Error())
+		return result.Error
+	}
+
+	return nil
+}
+
 // DestroyUser 注销用户
 func (d *DAO) DestroyUser(ctx *gin.Context, uuid string) error {
 	sql := `DELETE uvc FROM user_verification_codes uvc
@@ -187,6 +199,20 @@ func (d *DAO) DestroyUser(ctx *gin.Context, uuid string) error {
 	}
 
 	return nil
+}
+
+// GetUserIDByEmail 根据邮箱获取用户ID
+func (d *DAO) GetUserIDByEmail(ctx *gin.Context, email string) (string, error) {
+	var uuid string
+	sql := `SELECT uuid FROM users WHERE email = ?`
+
+	result := db.GlobalDB.Raw(sql, email).Scan(&uuid)
+	if result.Error != nil {
+		logger.Error(ctx, "GetUserIDByEmail query error: %s", result.Error.Error())
+		return "", result.Error
+	}
+
+	return uuid, nil
 }
 
 // userCredentials 接收查询结果

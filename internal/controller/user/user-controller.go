@@ -3,6 +3,7 @@ package user
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"regexp"
@@ -211,7 +212,7 @@ func (uc *Controller) Login(ctx *gin.Context) {
 		err = uc.UserService.LoginWithNicknamePassword(ctx, req, loginvo)
 	} else if req.Email != "" && req.VerifyCode != "" {
 
-		if req.Purpose != "2" {
+		if req.Purpose != "3" {
 			loginvo.Code = int32(middleware.LoginPurposeError)
 			loginvo.Message = "The purpose login error"
 			loginvo.JWTToken = ""
@@ -332,6 +333,66 @@ func (uc *Controller) UpdateUserInfo(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"code":    http.StatusOK,
 		"message": "update user info successful",
+	})
+}
+
+// ResetUserPassword 更新用户密码
+func (uc *Controller) ResetUserPassword(ctx *gin.Context) {
+	var req *user_dto.UpdatePasswordRequest
+
+	if err := ctx.ShouldBind(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.ParamEmpty,
+			"message": "The input data does not meet the requirements.",
+		})
+		return
+	}
+
+	log.Println(req)
+
+	if req.Purpose != "2" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.ResetPasswordPurposeError,
+			"message": "The purpose reset password error",
+		})
+	}
+
+	if req.Email == "" || req.NewPassWord == "" || req.RepeatNewPass == "" || req.VerifyCode == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.ParamEmpty,
+			"message": "The input data does not meet the requirements.",
+		})
+		return
+	}
+
+	if req.NewPassWord != req.RepeatNewPass {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.ParamEmpty,
+			"message": "The two new passwords are different.",
+		})
+		return
+	}
+
+	if !passwordValidator.MatchString(req.NewPassWord) {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.PasswordInvalid,
+			"message": "Password format is invalid. It must be 6-20 characters long and contain only letters, numbers, and symbols: !@#$%^&*",
+		})
+		return
+	}
+
+	err := uc.UserService.ResetUserPassword(ctx, req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.UpdateUserInfoFailed,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "update user password successful",
 	})
 }
 

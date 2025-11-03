@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"slices"
@@ -395,7 +396,7 @@ func (s *Service) UpdateUserInfo(ctx *gin.Context, req *user_dto.UpdateInfoReque
 		}()
 
 		hash := sha256.New()
-		if _, err := io.Copy(hash, file); err != nil {
+		if _, err = io.Copy(hash, file); err != nil {
 			logger.Error(ctx, "calcute sha256 error: %s", err.Error())
 			return err
 		}
@@ -489,6 +490,64 @@ func (s *Service) DestroyUser(ctx *gin.Context) error {
 	dst := strings.TrimPrefix(path, "/")
 	if err := os.Remove(dst); err != nil && !os.IsNotExist(err) {
 		logger.Warn(ctx, "Remove avatar file error (non-critical): %s", err.Error())
+	}
+
+	return nil
+}
+
+// ResetUserPassword 更新用户密码
+func (s *Service) ResetUserPassword(ctx *gin.Context, req *user_dto.UpdatePasswordRequest) error {
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+
+	uuid, err := s.UserDao.GetUserIDByEmail(ctx, req.Email)
+	if err != nil {
+		return err
+	}
+
+	log.Println(uuid)
+
+	if uuid == "" {
+		return fmt.Errorf("user not exist")
+	}
+
+	exists, err := rdbClient.Exists(rCtx, uuid).Result()
+	if err != nil {
+		logger.Error(ctx, "check user exist error: %s", err.Error())
+		return err
+	}
+
+	if exists != 0 {
+		return fmt.Errorf("user is logged in so editing is prohibited")
+	}
+
+	code, err := rdbClient.Get(rCtx, codePrefix+req.Email).Result()
+	if err != nil {
+		logger.Error(ctx, "get code from redis error: %s", err.Error())
+		return err
+	}
+
+	if code != req.VerifyCode {
+		logger.Error(ctx, "verify code is not correct: %s", req.VerifyCode)
+		return err
+	}
+
+	newPasswordHash, err := pkg.HashPassword(req.NewPassWord)
+	if err != nil {
+		logger.Error(ctx, "hashPassword error: %s", err.Error())
+		return err
+	}
+
+	err = s.UserDao.ResetUserPassword(ctx, uuid, newPasswordHash)
+	if err != nil {
+		logger.Error(ctx, "ResetUserPassword error: %s", err.Error())
+		return err
+	}
+
+	_, err = rdbClient.Del(rCtx, codePrefix+req.Email).Result()
+	if err != nil {
+		logger.Error(ctx, "Delete verify code error: %s", err.Error())
+		return err
 	}
 
 	return nil

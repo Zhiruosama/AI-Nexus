@@ -25,7 +25,7 @@ type LoginRequest struct {
 	Email      string `json:"email,omitempty" form:"email,omitempty"`
 	PassWord   string `json:"password,omitempty" form:"password,omitempty"`
 	VerifyCode string `json:"verify_code,omitempty" form:"verify_code,omitempty"`
-	Purpose    string `json:"purpose" form:"purpose"`
+	Purpose    string `json:"purpose,omitempty" form:"purpose,omitempty"`
 }
 
 // UpdateInfoRequest 用户更新数据请求
@@ -33,4 +33,13 @@ type UpdateInfoRequest struct {
 	NickName string                `json:"nickname,omitempty" form:"nickname,omitempty"`
 	Avatar   *multipart.FileHeader `json:"avatar,omitempty" form:"avatar,omitempty"`
 	Sha256   string                `json:"sha256,omitempty" form:"sha256,omitempty"`
+}
+
+// UpdatePasswordRequest 用户更新密码请求
+type UpdatePasswordRequest struct {
+	Email         string `json:"email" form:"email"`
+	NewPassWord   string `json:"new_password" form:"new_password"`
+	RepeatNewPass string `json:"repeat_new_password" form:"repeat_new_password"`
+	VerifyCode    string `json:"verify_code" form:"verify_code"`
+	Purpose       string `json:"purpose" form:"purpose"`
 }
