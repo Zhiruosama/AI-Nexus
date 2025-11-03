@@ -19,6 +19,15 @@ type RegisterRequest struct {
 	Purpose        string `json:"purpose" form:"purpose"`
 }
 
+// LoginRequest 登录请求
+type LoginRequest struct {
+	NickName   string `json:"nickname,omitempty" form:"nickname,omitempty"`
+	Email      string `json:"email,omitempty" form:"email,omitempty"`
+	PassWord   string `json:"password,omitempty" form:"password,omitempty"`
+	VerifyCode string `json:"verify_code,omitempty" form:"verify_code,omitempty"`
+	Purpose    string `json:"purpose" form:"purpose"`
+}
+
 // UpdateInfoRequest 用户更新数据请求
 type UpdateInfoRequest struct {
 	NickName string                `json:"nickname,omitempty" form:"nickname,omitempty"`

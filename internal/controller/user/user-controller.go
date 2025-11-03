@@ -10,7 +10,6 @@ import (
 	"time"
 
 	user_dto "github.com/Zhiruosama/ai_nexus/internal/domain/dto/user"
-	user_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/user"
 	user_vo "github.com/Zhiruosama/ai_nexus/internal/domain/vo/user"
 	"github.com/Zhiruosama/ai_nexus/internal/middleware"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/rdb"
@@ -179,17 +178,17 @@ func (uc *Controller) Register(ctx *gin.Context) {
 
 // Login 登录
 func (uc *Controller) Login(ctx *gin.Context) {
-	var query = &user_query.LoginQuery{}
+	var req = &user_dto.LoginRequest{}
 	var loginvo = &user_vo.LoginVO{}
 
-	if err := ctx.ShouldBind(query); err != nil {
+	if err := ctx.ShouldBind(req); err != nil {
 		loginvo.Code = int32(middleware.ParamEmpty)
 		loginvo.Message = "The input data does not meet the requirements."
 		ctx.JSON(http.StatusBadRequest, loginvo)
 		return
 	}
 
-	if query.Email == "" && query.Nickname == "" {
+	if req.Email == "" && req.NickName == "" {
 		loginvo.Code = int32(middleware.UserInformationEmpty)
 		loginvo.Message = "User information cannot be empty"
 		loginvo.JWTToken = ""
@@ -197,7 +196,7 @@ func (uc *Controller) Login(ctx *gin.Context) {
 		return
 	}
 
-	if query.PassWord == "" && query.VerifyCode == "" {
+	if req.PassWord == "" && req.VerifyCode == "" {
 		loginvo.Code = int32(middleware.PasswordEmpty)
 		loginvo.Message = "Password cannot be empty"
 		loginvo.JWTToken = ""
@@ -208,11 +207,11 @@ func (uc *Controller) Login(ctx *gin.Context) {
 	var err error
 
 	// 校验参数 判断是用用户密码登录 还是用邮箱验证码登录
-	if query.Nickname != "" && query.PassWord != "" {
-		err = uc.UserService.LoginWithNicknamePassword(ctx, query, loginvo)
-	} else if query.Email != "" && query.VerifyCode != "" {
+	if req.NickName != "" && req.PassWord != "" {
+		err = uc.UserService.LoginWithNicknamePassword(ctx, req, loginvo)
+	} else if req.Email != "" && req.VerifyCode != "" {
 
-		if query.Purpose != "2" {
+		if req.Purpose != "2" {
 			loginvo.Code = int32(middleware.LoginPurposeError)
 			loginvo.Message = "The purpose login error"
 			loginvo.JWTToken = ""
@@ -220,9 +219,9 @@ func (uc *Controller) Login(ctx *gin.Context) {
 			return
 		}
 
-		err = uc.UserService.LoginWithEmailVerifyCode(ctx, query, loginvo)
-	} else if query.Email != "" && query.PassWord != "" {
-		err = uc.UserService.LoginWithEmailPassword(ctx, query, loginvo)
+		err = uc.UserService.LoginWithEmailVerifyCode(ctx, req, loginvo)
+	} else if req.Email != "" && req.PassWord != "" {
+		err = uc.UserService.LoginWithEmailPassword(ctx, req, loginvo)
 	}
 
 	if err != nil {
