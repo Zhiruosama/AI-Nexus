@@ -3,7 +3,6 @@ package user
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"net/http"
 	"regexp"
@@ -347,8 +346,6 @@ func (uc *Controller) ResetUserPassword(ctx *gin.Context) {
 		})
 		return
 	}
-
-	log.Println(req)
 
 	if req.Purpose != "2" {
 		ctx.JSON(http.StatusBadRequest, gin.H{

@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"slices"
@@ -504,8 +503,6 @@ func (s *Service) ResetUserPassword(ctx *gin.Context, req *user_dto.UpdatePasswo
 	if err != nil {
 		return err
 	}
-
-	log.Println(uuid)
 
 	if uuid == "" {
 		return fmt.Errorf("user not exist")
