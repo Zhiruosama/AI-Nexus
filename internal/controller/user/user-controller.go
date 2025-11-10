@@ -10,6 +10,7 @@ import (
 	"time"
 
 	user_dto "github.com/Zhiruosama/ai_nexus/internal/domain/dto/user"
+	user_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/user"
 	user_vo "github.com/Zhiruosama/ai_nexus/internal/domain/vo/user"
 	"github.com/Zhiruosama/ai_nexus/internal/middleware"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/rdb"
@@ -286,8 +287,27 @@ func (uc *Controller) GetUserInfo(ctx *gin.Context) {
 // GetAllUsers 获取所有用户信息
 func (uc *Controller) GetAllUsers(ctx *gin.Context) {
 	users := &user_vo.ListUserInfoVO{}
+	query := &user_query.GetAllUsersQuery{
+		PageIndex: -1,
+		PageSize:  -1,
+	}
 
-	err := uc.UserService.GetAllUsers(ctx, users)
+	pageIndex := ctx.Query("pageIndex")
+	pageSize := ctx.Query("pageSize")
+
+	if pageIndex != "" {
+		query.PageIndex, _ = strconv.Atoi(pageIndex)
+		query.PageSize, _ = strconv.Atoi(pageSize)
+	}
+
+	var err error
+
+	if query.PageIndex != -1 {
+		err = uc.UserService.GetAllUsersByPage(ctx, users, query)
+	} else {
+		err = uc.UserService.GetAllUsers(ctx, users)
+	}
+
 	if err != nil {
 		users.Code = int32(middleware.GetAllUserInfoFailed)
 		users.Message = fmt.Sprintf("Failed to get all user info, err: %s", err.Error())

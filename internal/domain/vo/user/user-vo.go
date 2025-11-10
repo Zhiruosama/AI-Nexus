@@ -18,10 +18,12 @@ type InfoVO struct {
 
 // ListUserInfoVO 所有用户信息
 type ListUserInfoVO struct {
-	Code    int32         `json:"code"`
-	Message string        `json:"message"`
-	Count   int           `json:"count"`
-	Users   []TableUserVO `json:"users"`
+	Code      int32         `json:"code"`
+	Message   string        `json:"message"`
+	PageIndex int           `json:"pageindex,omitempty"`
+	PageSize  int           `json:"pagesize,omitempty"`
+	Count     int           `json:"count"`
+	Users     []TableUserVO `json:"users"`
 }
 
 // TableUserVO 单个用户的全量数据

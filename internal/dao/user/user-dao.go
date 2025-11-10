@@ -5,6 +5,7 @@ import (
 	"time"
 
 	user_do "github.com/Zhiruosama/ai_nexus/internal/domain/do/user"
+	user_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/user"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/db"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/logger"
 	"github.com/gin-gonic/gin"
@@ -120,6 +121,20 @@ func (d *DAO) GetAllUsers(ctx *gin.Context) ([]*user_do.TableUserDO, int, error)
 	sql := `SELECT id, uuid, nickname, avatar, email, last_login, created_at, updated_at FROM users`
 
 	result := db.GlobalDB.Raw(sql).Scan(&users)
+	if result.Error != nil {
+		logger.Error(ctx, "GetAllUsers query error: %s", result.Error.Error())
+		return nil, 0, result.Error
+	}
+
+	return users, len(users), nil
+}
+
+// GetAllUsersByPage 查询所有用户信息-分页
+func (d *DAO) GetAllUsersByPage(ctx *gin.Context, query *user_query.GetAllUsersQuery) ([]*user_do.TableUserDO, int, error) {
+	var users = make([]*user_do.TableUserDO, 0)
+	sql := `SELECT id, uuid, nickname, avatar, email, last_login, created_at, updated_at FROM users LIMIT ? OFFSET ?`
+
+	result := db.GlobalDB.Raw(sql, query.PageSize, query.PageIndex*query.PageSize).Scan(&users)
 	if result.Error != nil {
 		logger.Error(ctx, "GetAllUsers query error: %s", result.Error.Error())
 		return nil, 0, result.Error

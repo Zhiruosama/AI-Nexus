@@ -16,6 +16,7 @@ import (
 	user_dao "github.com/Zhiruosama/ai_nexus/internal/dao/user"
 	user_do "github.com/Zhiruosama/ai_nexus/internal/domain/do/user"
 	user_dto "github.com/Zhiruosama/ai_nexus/internal/domain/dto/user"
+	user_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/user"
 	user_vo "github.com/Zhiruosama/ai_nexus/internal/domain/vo/user"
 	"github.com/Zhiruosama/ai_nexus/internal/grpc"
 	"github.com/Zhiruosama/ai_nexus/internal/middleware"
@@ -40,9 +41,10 @@ func NewService() *Service {
 }
 
 const (
-	codePrefix = "code_"
-	infoPrefix = "info_"
-	allinfoKey = "allInfoForUsers"
+	codePrefix       = "code_"
+	infoPrefix       = "info_"
+	allinfoKey       = "allInfoForUsers"
+	allinfoKeyPrefix = "allInfoForUsers_"
 )
 
 // SendEmailCode 发送邮箱服务
@@ -117,6 +119,12 @@ func (s *Service) Register(ctx *gin.Context, dto *user_dto.RegisterRequest) erro
 		logger.Error(ctx, "Delete verify code error: %s", err.Error())
 		return err
 	}
+
+	if delErr := rdb.Rdb.Del(rdb.Ctx, allinfoKey).Err(); delErr != nil {
+		logger.Error(ctx, "Delete all users cache error: %s", delErr.Error())
+	}
+
+	delUserInfoByPage(ctx)
 
 	return nil
 }
@@ -309,7 +317,7 @@ func (s *Service) GetUserInfo(ctx *gin.Context, userid string) (*user_vo.InfoVO,
 	return uvo, nil
 }
 
-// GetAllUsers 获取所有用户信息
+// GetAllUsers 获取全部用户信息
 func (s *Service) GetAllUsers(ctx *gin.Context, users *user_vo.ListUserInfoVO) error {
 	rdbClient := rdb.Rdb
 	rCtx := rdb.Ctx
@@ -327,7 +335,7 @@ func (s *Service) GetAllUsers(ctx *gin.Context, users *user_vo.ListUserInfoVO) e
 		}
 		users.Code = 200
 		users.Message = "Success get all user info"
-		users.Count = 0
+		users.Count = len(users.Users)
 		return nil
 	}
 
@@ -360,6 +368,67 @@ func (s *Service) GetAllUsers(ctx *gin.Context, users *user_vo.ListUserInfoVO) e
 
 	if err = rdbClient.Set(rCtx, allinfoKey, jsonStr, time.Minute*10).Err(); err != nil {
 		logger.Error(ctx, "Set all userinfo to redis error: %s", err.Error())
+	}
+
+	return nil
+}
+
+// GetAllUsersByPage 获取所有用户信息-分页
+func (s *Service) GetAllUsersByPage(ctx *gin.Context, users *user_vo.ListUserInfoVO, query *user_query.GetAllUsersQuery) error {
+	users.PageIndex = query.PageIndex
+	users.PageSize = query.PageSize
+
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+
+	key := fmt.Sprintf("%s%d_%d", allinfoKeyPrefix, query.PageIndex, query.PageSize)
+
+	info, err := rdbClient.Get(rCtx, key).Result()
+	if err != nil && err != redis.Nil {
+		logger.Error(ctx, "Get all userinfo by page from redis error: %s", err.Error())
+		return err
+	}
+
+	if err == nil && info != "" {
+		if err = json.Unmarshal([]byte(info), &users.Users); err != nil {
+			logger.Error(ctx, "Unmarshal error in get all user info by page: %s", err.Error())
+			return err
+		}
+		users.Code = 200
+		users.Message = "Success get all user info by page"
+		users.Count = len(users.Users)
+		return nil
+	}
+
+	userDos, count, err := s.UserDao.GetAllUsersByPage(ctx, query)
+	if err != nil {
+		return err
+	}
+
+	users.Code = 200
+	users.Message = "Success get all user info by page"
+	users.Count = count
+	for _, userDo := range userDos {
+		users.Users = append(users.Users, user_vo.TableUserVO{
+			ID:        userDo.ID,
+			UUID:      userDo.UUID,
+			Nickname:  userDo.Nickname,
+			Avatar:    userDo.Avatar,
+			Email:     userDo.Email,
+			LastLogin: userDo.LastLogin,
+			CreatedAt: userDo.CreatedAt,
+			UpdatedAt: userDo.UpdatedAt,
+		})
+	}
+
+	jsonStr, err := json.Marshal(users.Users)
+	if err != nil {
+		logger.Error(ctx, "Marshal error in get all user info by page: %s", err.Error())
+		return err
+	}
+
+	if err = rdbClient.Set(rCtx, key, jsonStr, time.Minute*10).Err(); err != nil {
+		logger.Error(ctx, "Set all userinfo by page to redis error: %s", err.Error())
 	}
 
 	return nil
@@ -453,6 +522,8 @@ func (s *Service) UpdateUserInfo(ctx *gin.Context, req *user_dto.UpdateInfoReque
 		logger.Error(ctx, "Delete all users cache error: %s", delErr.Error())
 	}
 
+	delUserInfoByPage(ctx)
+
 	return nil
 }
 
@@ -485,6 +556,8 @@ func (s *Service) DestroyUser(ctx *gin.Context) error {
 	if rdberr := rdbClient.Del(rCtx, allinfoKey).Err(); rdberr != nil {
 		logger.Error(ctx, "Remove user form redis error: %s", rdberr.Error())
 	}
+
+	delUserInfoByPage(ctx)
 
 	dst := strings.TrimPrefix(path, "/")
 	if err := os.Remove(dst); err != nil && !os.IsNotExist(err) {
@@ -548,4 +621,22 @@ func (s *Service) ResetUserPassword(ctx *gin.Context, req *user_dto.UpdatePasswo
 	}
 
 	return nil
+}
+
+func delUserInfoByPage(ctx *gin.Context) {
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+
+	pattern := allinfoKeyPrefix + "*"
+
+	iter := rdbClient.Scan(rCtx, 0, pattern, 0).Iterator()
+	for iter.Next(rCtx) {
+		key := iter.Val()
+		if err := rdbClient.Del(rCtx, key).Err(); err != nil {
+			logger.Error(ctx, "Delete key %s failed: %v", key, err)
+		}
+	}
+	if err := iter.Err(); err != nil {
+		logger.Error(ctx, "Scan error: %v", err)
+	}
 }
