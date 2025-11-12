@@ -3,6 +3,7 @@ package db
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/Zhiruosama/ai_nexus/configs"
 	"gorm.io/driver/mysql"
@@ -22,5 +23,5 @@ func init() {
 	}
 
 	GlobalDB = db
-	fmt.Println("Mysql connect success")
+	log.Println("[Mysql] Mysql connect success")
 }

@@ -4,9 +4,12 @@ package rdb
 import (
 	"context"
 	"fmt"
+	"log"
+
+	"github.com/redis/go-redis/v9"
+	"github.com/redis/go-redis/v9/maintnotifications"
 
 	"github.com/Zhiruosama/ai_nexus/configs"
-	"github.com/redis/go-redis/v9"
 )
 
 var (
@@ -23,10 +26,13 @@ func init() {
 		Addr:     cfg.Addr,
 		Password: cfg.Password,
 		DB:       cfg.DB,
+		MaintNotificationsConfig: &maintnotifications.Config{
+			Mode: maintnotifications.ModeDisabled,
+		},
 	})
 
 	if err := Rdb.Ping(Ctx).Err(); err != nil {
 		panic(fmt.Sprintf("[ERROR] Redis init error, err is: %s", err.Error()))
 	}
-	fmt.Println("Redis connect success")
+	log.Println("[Redis] Redis connect success")
 }
