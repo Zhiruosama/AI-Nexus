@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// InitUserRoutes 初始化演示模块的路由
+// InitUserRoutes 初始化用户模块的路由
 func InitUserRoutes(r *gin.Engine) {
 	us := user_service.NewService()
 	uc := user_controller.NewController(us)

@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS `image_generation_models` (
 
   -- 显示与排序
   `description` TEXT COMMENT '模型描述',
-  `tags` JSON COMMENT '标签: ["快速", "高质量"]',
+  `tags` VARCHAR(128) COMMENT '标签: ["快速", "高质量"]',
   `sort_order` INT DEFAULT 0 COMMENT '排序权重',
 
   -- 统计信息

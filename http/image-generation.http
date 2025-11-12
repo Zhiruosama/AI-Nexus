@@ -1,0 +1,22 @@
+## 生图模块
+### 创建新模型
+POST http://127.0.0.1:9000/image-generation/create-model
+Content-Type: application/json
+
+{
+  "model_id": "sd-v1.5",
+  "model_name": "Stable Diffusion v1.5",
+  "model_type": "text2img",
+  "provider": "modelscope",
+  "description": "通用高质量模型",
+  "tags": "高质量",
+  "sort_order": 10,
+  "third_party_model_id": "stable-diffusion-v1_5",
+  "base_url": "https://api.modelscope.cn/",
+  "default_width": 512,
+  "default_height": 512,
+  "max_width": 1024,
+  "max_height": 1024,
+  "min_steps": 10,
+  "max_steps": 100
+}
