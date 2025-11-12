@@ -11,7 +11,7 @@ type ModelCreateRequest struct {
 	Tags              string `json:"tags,omitempty"`
 	SortOrder         int    `json:"sort_order"`
 	ThirdPartyModelID string `json:"third_party_model_id"`
-	BaseUrl           string `json:"base_url"`
+	BaseURL           string `json:"base_url"`
 	DefaultWidth      int    `json:"default_width"`
 	DefaultHeight     int    `json:"default_height"`
 	MaxWidth          int    `json:"max_width"`

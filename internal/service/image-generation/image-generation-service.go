@@ -54,7 +54,7 @@ func (s *Service) CreateModel(ctx *gin.Context, dto *imagegeneration_dto.ModelCr
 		Tags:              dto.Tags,
 		SortOrder:         dto.SortOrder,
 		ThirdPartyModelID: dto.ThirdPartyModelID,
-		BaseUrl:           dto.BaseUrl,
+		BaseURL:           dto.BaseURL,
 		DefaultWidth:      dto.DefaultWidth,
 		DefaultHeight:     dto.DefaultHeight,
 		MaxWidth:          dto.MaxWidth,

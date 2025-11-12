@@ -16,9 +16,9 @@ type TableImageGenerationTaskDO struct {
 	Steps            int     `gorm:"column:num_inference_steps"`
 	GuidanceScale    float64 `gorm:"column:guidance_scale"`
 	Seed             int64   `gorm:"column:seed"`
-	InputImageUrl    string  `gorm:"column:input_image_url"`
+	InputImageURL    string  `gorm:"column:input_image_url"`
 	Strength         float64 `gorm:"column:strength"`
-	OutputImageUrl   string  `gorm:"column:output_image_url"`
+	OutputImageURL   string  `gorm:"column:output_image_url"`
 	ActualSeed       int64   `gorm:"column:actual_seed"`
 	ErrorMessage     string  `gorm:"column:error_message"`
 	RetryCount       int8    `gorm:"column:retry_count"`
@@ -48,7 +48,7 @@ type TableImageGenerationModelsDO struct {
 	IsActive          bool    `gorm:"column:is_active"`
 	IsRecommended     bool    `gorm:"column:is_recommended"`
 	ThirdPartyModelID string  `gorm:"column:third_party_model_id"`
-	BaseUrl           string  `gorm:"column:base_url"`
+	BaseURL           string  `gorm:"column:base_url"`
 	DefaultWidth      int     `gorm:"column:default_width"`
 	DefaultHeight     int     `gorm:"column:default_height"`
 	MaxWidth          int     `gorm:"column:max_width"`

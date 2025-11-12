@@ -28,7 +28,7 @@ func (d *DAO) CheckModelExists(ctx *gin.Context, modelID string) (bool, error) {
 // CreateModel 创建新模型
 func (d *DAO) CreateModel(ctx *gin.Context, model *imagegeneration_do.TableImageGenerationModelsDO) error {
 	sql := `INSERT INTO image_generation_models (model_id, model_name, model_type, provider, description, tags, sort_order, third_party_model_id, base_url, default_width, default_height, max_width, max_height, min_steps, max_steps) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	result := db.GlobalDB.Exec(sql, model.ModelID, model.ModelName, model.ModelType, model.Provider, model.Description, model.Tags, model.SortOrder, model.ThirdPartyModelID, model.BaseUrl, model.DefaultWidth, model.DefaultHeight, model.MaxWidth, model.MaxHeight, model.MinSteps, model.MaxSteps)
+	result := db.GlobalDB.Exec(sql, model.ModelID, model.ModelName, model.ModelType, model.Provider, model.Description, model.Tags, model.SortOrder, model.ThirdPartyModelID, model.BaseURL, model.DefaultWidth, model.DefaultHeight, model.MaxWidth, model.MaxHeight, model.MinSteps, model.MaxSteps)
 
 	if result.Error != nil {
 		logger.Error(ctx, "CreateModel error: %s", result.Error.Error())
