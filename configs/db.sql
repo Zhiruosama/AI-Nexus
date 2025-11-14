@@ -71,9 +71,6 @@ CREATE TABLE IF NOT EXISTS `image_generation_tasks` (
   `generation_time_ms` INT UNSIGNED COMMENT '生成耗时(毫秒)',
   `queue_time_ms` INT UNSIGNED COMMENT '队列等待时长(毫秒)',
 
-  -- RabbitMQ相关
-  `mq_message_id` VARCHAR(64) COMMENT 'RabbitMQ消息ID',
-
   -- 时间戳
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `queued_at` DATETIME COMMENT '进入队列时间',

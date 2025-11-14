@@ -2,19 +2,23 @@
 package imagegeneration
 
 import (
-	imagegeneration_controller "github.com/Zhiruosama/ai_nexus/internal/controller/image-generation"
+	image_generation_controller "github.com/Zhiruosama/ai_nexus/internal/controller/image-generation"
 	"github.com/Zhiruosama/ai_nexus/internal/middleware"
-	imagegeneration_service "github.com/Zhiruosama/ai_nexus/internal/service/image-generation"
+	image_generation_service "github.com/Zhiruosama/ai_nexus/internal/service/image-generation"
 	"github.com/gin-gonic/gin"
 )
 
 // InitImageGenerationRoutes 初始化图像生成模块的路由
 func InitImageGenerationRoutes(r *gin.Engine) {
-	igs := imagegeneration_service.NewService()
-	igc := imagegeneration_controller.NewController(igs)
+	igs := image_generation_service.NewService()
+	igc := image_generation_controller.NewController(igs)
 
-	imagegeneration := r.Group("/image-generation")
+	image_generation := r.Group("/image-generation")
 	{
-		imagegeneration.POST("/create-model", middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), igc.CreateModel)
+		model := image_generation.Group("/model")
+		model.Use(middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware())
+		{
+			model.POST("/create", igc.CreateModel)
+		}
 	}
 }

@@ -19,6 +19,6 @@ type TableUserVerificationCodesDO struct {
 	ID       int64  `gorm:"column:id"`
 	Email    string `gorm:"column:email"`
 	Code     string `gorm:"column:code"`
-	Purpose  int8   `gorm:"column:purpose"`
+	Purpose  int8   `gorm:"column:purpose"` // 1=register, 2=reset_password, 3=login
 	CreateAt string `gorm:"column:created_at"`
 }

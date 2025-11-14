@@ -1,22 +1,24 @@
 ## 生图模块
 ### 创建新模型
-POST http://127.0.0.1:9000/image-generation/create-model
+POST http://127.0.0.1:9000/image-generation/model/create
 Content-Type: application/json
 
 {
-  "model_id": "sd-v1.5",
-  "model_name": "Stable Diffusion v1.5",
+  "model_id": "qwen-image",
+  "model_name": "Qwen-Image",
   "model_type": "text2img",
   "provider": "modelscope",
-  "description": "通用高质量模型",
-  "tags": "高质量",
+  "description": "千文图像生成模型, 擅长中文文字渲染, 适用于海报、广告等场景",
+  "tags": "高质量,中文渲染",
   "sort_order": 10,
-  "third_party_model_id": "stable-diffusion-v1_5",
-  "base_url": "https://api.modelscope.cn/",
-  "default_width": 512,
-  "default_height": 512,
-  "max_width": 1024,
-  "max_height": 1024,
-  "min_steps": 10,
-  "max_steps": 100
+  "is_active": true,
+  "is_recommended": true,
+  "third_party_model_id": "Qwen/Qwen-Image",
+  "base_url": "https://api-inference.modelscope.cn/",
+  "default_width": 1024,
+  "default_height": 1024,
+  "max_width": 2048,
+  "max_height": 2048,
+  "min_steps": 15,
+  "max_steps": 50
 }
