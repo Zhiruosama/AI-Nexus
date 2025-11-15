@@ -7,6 +7,7 @@ import (
 	image_generation_dao "github.com/Zhiruosama/ai_nexus/internal/dao/image-generation"
 	image_generation_do "github.com/Zhiruosama/ai_nexus/internal/domain/do/image-generation"
 	image_generation_dto "github.com/Zhiruosama/ai_nexus/internal/domain/dto/image-generation"
+	image_generation_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/image-generation"
 	"github.com/gin-gonic/gin"
 )
 
@@ -66,9 +67,11 @@ func (s *Service) DeleteModel(ctx *gin.Context, modelID string) error {
 	if err != nil {
 		return err
 	}
+
 	if !existing {
 		return fmt.Errorf("model_id '%s' does not exist", modelID)
 	}
+
 	if err := s.ImageGenerationDAO.DeleteModel(ctx, modelID); err != nil {
 		return err
 	}
@@ -78,10 +81,6 @@ func (s *Service) DeleteModel(ctx *gin.Context, modelID string) error {
 
 // GetModelInfo 获取模型信息
 func (s *Service) GetModelInfo(ctx *gin.Context, modelID string) (*image_generation_do.TableImageGenerationModelsDO, error) {
-	if modelID == "" {
-		return nil, fmt.Errorf("model_id is required")
-	}
-
 	existing, err := s.ImageGenerationDAO.CheckModelExists(ctx, modelID)
 	if err != nil {
 		return nil, err
@@ -99,64 +98,71 @@ func (s *Service) GetModelInfo(ctx *gin.Context, modelID string) (*image_generat
 
 // UpdateModel 更新模型数据
 func (s *Service) UpdateModel(ctx *gin.Context, dto *image_generation_dto.ModelUpdateDTO) error {
-	// 唯一性检验
-	existing, err := s.ImageGenerationDAO.CheckModelExists(ctx, dto.ModelID)
-	if err != nil {
-		return err
-	}
-	if !existing {
-		return fmt.Errorf("model_id '%s' does not exist", dto.ModelID)
-	}
+	updates := make(map[string]any)
 
-	updates := make(map[string]interface{})
 	if dto.ModelName != nil {
 		updates["model_name"] = *dto.ModelName
 	}
+
 	if dto.ModelType != nil {
 		if *dto.ModelType != "text2img" && *dto.ModelType != "img2img" {
 			return fmt.Errorf("model_type must be either 'text2img' or 'img2img'")
 		}
 		updates["model_type"] = *dto.ModelType
 	}
+
 	if dto.Provider != nil {
 		updates["provider"] = *dto.Provider
 	}
+
 	if dto.Description != nil {
 		updates["description"] = *dto.Description
 	}
+
 	if dto.Tags != nil {
 		updates["tags"] = *dto.Tags
 	}
+
 	if dto.SortOrder != nil {
 		updates["sort_order"] = *dto.SortOrder
 	}
+
 	if dto.IsActive != nil {
 		updates["is_active"] = *dto.IsActive
 	}
+
 	if dto.IsRecommended != nil {
 		updates["is_recommended"] = *dto.IsRecommended
 	}
+
 	if dto.ThirdPartyModelID != nil {
 		updates["third_party_model_id"] = *dto.ThirdPartyModelID
 	}
+
 	if dto.BaseURL != nil {
 		updates["base_url"] = *dto.BaseURL
 	}
+
 	if dto.DefaultWidth != nil {
 		updates["default_width"] = *dto.DefaultWidth
 	}
+
 	if dto.DefaultHeight != nil {
 		updates["default_height"] = *dto.DefaultHeight
 	}
+
 	if dto.MaxWidth != nil {
 		updates["max_width"] = *dto.MaxWidth
 	}
+
 	if dto.MaxHeight != nil {
 		updates["max_height"] = *dto.MaxHeight
 	}
+
 	if dto.MinSteps != nil {
 		updates["min_steps"] = *dto.MinSteps
 	}
+
 	if dto.MaxSteps != nil {
 		updates["max_steps"] = *dto.MaxSteps
 	}
@@ -182,7 +188,16 @@ func (s *Service) UpdateModel(ctx *gin.Context, dto *image_generation_dto.ModelU
 	return nil
 }
 
-// QueryModelIDs 根据具体信息查询模型
-func (s *Service) QueryModelIDs(ctx *gin.Context, filters map[string]interface{}, q string) ([]string, error) {
-	return s.ImageGenerationDAO.QueryModelIDs(ctx, filters, q)
+// QueryModels 根据具体信息查询模型列表
+func (s *Service) QueryModels(ctx *gin.Context, query *image_generation_query.ModelsQuery) ([]*image_generation_do.TableImageGenerationModelsDO, int64, error) {
+	models, total, err := s.ImageGenerationDAO.QueryModels(ctx, query)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if models == nil {
+		models = []*image_generation_do.TableImageGenerationModelsDO{}
+	}
+
+	return models, total, nil
 }

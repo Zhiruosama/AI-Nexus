@@ -22,6 +22,7 @@ type Config struct {
 	Idempotency   IdempotencyConfig   `yaml:"idempotency"`
 	Deduplication DeduplicationConfig `yaml:"deduplication"`
 	GRPCClient    GRPCClientConfig    `yaml:"grpcclient"`
+	RabbitMQ      RabbitMQConfig      `yaml:"rabbitmq"`
 }
 
 // ServerConfig 定义主服务配置
@@ -68,6 +69,15 @@ type GRPCClientConfig struct {
 	DefaultTimeout time.Duration `yaml:"defaulttimeout"`
 }
 
+// RabbitMQConfig 定义 RabbitMQ 相关配置
+type RabbitMQConfig struct {
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+	VHost    string `yaml:"vhost"`
+}
+
 // SerialString 返回服务信息的序列化字符串
 func (sc ServerConfig) SerialString() string {
 	return fmt.Sprintf("%s:%d", sc.Host, sc.Port)
@@ -78,6 +88,11 @@ func (mc MysqlConfig) DsnString() string {
 	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local", mc.User, mc.Pass, mc.Host, mc.Port, mc.DataBase)
 }
 
+// URLString 返回 RabbitMQ 连接 URL
+func (rc RabbitMQConfig) URLString() string {
+	return fmt.Sprintf("amqp://%s:%s@%s:%d%s", rc.User, rc.Password, rc.Host, rc.Port, rc.VHost)
+}
+
 func init() {
 	var err error
 	GlobalConfig, err = loadConfig("configs/config.yaml")
@@ -85,7 +100,7 @@ func init() {
 	if err != nil {
 		panic(fmt.Sprintf("[ERROR] Failed to load config: %s\n", err.Error()))
 	}
-	log.Println("[INFO] Config loaded successfully")
+	log.Println("[Config] Config loaded successfully")
 }
 
 func loadConfig(path string) (*Config, error) {

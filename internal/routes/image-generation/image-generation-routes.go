@@ -13,9 +13,9 @@ func InitImageGenerationRoutes(r *gin.Engine) {
 	igs := image_generation_service.NewService()
 	igc := image_generation_controller.NewController(igs)
 
-	image_generation := r.Group("/image-generation")
+	imageGeneration := r.Group("/image-generation")
 	{
-		model := image_generation.Group("/model")
+		model := imageGeneration.Group("/model")
 		model.Use(middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware())
 		{
 			model.POST("/create", igc.CreateModel)
@@ -23,7 +23,7 @@ func InitImageGenerationRoutes(r *gin.Engine) {
 			model.DELETE("/delete", igc.DeleteModel)
 			model.PUT("/update", igc.UpdateModel)
 			model.GET("/info", igc.GetModelInfo)
-			model.GET("/queryids", igc.QueryModelIDs)
+			model.GET("/query", igc.QueryModels)
 		}
 	}
 }

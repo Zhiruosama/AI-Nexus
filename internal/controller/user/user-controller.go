@@ -3,6 +3,7 @@ package user
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"regexp"
@@ -14,8 +15,10 @@ import (
 	user_vo "github.com/Zhiruosama/ai_nexus/internal/domain/vo/user"
 	"github.com/Zhiruosama/ai_nexus/internal/middleware"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/rdb"
+	"github.com/Zhiruosama/ai_nexus/internal/pkg/ws"
 	user_service "github.com/Zhiruosama/ai_nexus/internal/service/user"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 // Controller 对应 Controller 结构，有一个 Service 成员
@@ -42,6 +45,23 @@ var (
 	passwordValidator = regexp.MustCompile(passwordRegex)
 	emailValidator    = regexp.MustCompile(emailRegex)
 	seededRand        = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	upgrader = websocket.Upgrader{
+		ReadBufferSize:   1024,
+		WriteBufferSize:  1024,
+		HandshakeTimeout: 10 * time.Second,
+		CheckOrigin: func(_ *http.Request) bool {
+			// origin := r.Header.Get("Origin")
+			// allowedOrigins := []string{"https://chulan.xin"}
+			// for _, allowed := range allowedOrigins {
+			//     if origin == allowed { return true }
+			// }
+			// return false
+
+			// 暂时允许所有来源
+			return true
+		},
+	}
 )
 
 // SendEmailCode 发送验证码
@@ -441,4 +461,39 @@ func generateRandomString(n int) string {
 	}
 
 	return string(b)
+}
+
+// HandleWebSocket 处理 WebSocket 连接
+func (uc *Controller) HandleWebSocket(ctx *gin.Context) {
+	userID, exists := ctx.Get(middleware.UserIDKey)
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"code":    http.StatusUnauthorized,
+			"message": "Unauthorized, please log in first",
+		})
+		return
+	}
+
+	userUUID, ok := userID.(string)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"code":    http.StatusInternalServerError,
+			"message": "Invalid user_id type",
+		})
+		return
+	}
+
+	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
+	if err != nil {
+		log.Printf("[WebSocket] Upgrade failed: %v\n", err)
+		return
+	}
+
+	client := ws.NewClient(userUUID, conn, ws.GlobalHub)
+	ws.GlobalHub.Register(client)
+
+	go client.ReadPump()
+	go client.WritePump()
+
+	log.Printf("[WebSocket] Client %s connected and pumps started\n", userUUID)
 }

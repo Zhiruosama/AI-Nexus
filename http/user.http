@@ -59,7 +59,7 @@ Authorization: {{token}}
 GET http://localhost:9000/user/getall-userinfo HTTP/1.1
 
 ### 获取所有用户信息-分页
-GET http://localhost:9000/user/getall-userinfo?pageIndex=0&pageSize=2 HTTP/1.1
+GET http://localhost:9000/user/getall-userinfo?pageIndex=0&pageSize=10 HTTP/1.1
 
 ### 更新用户信息
 PUT http://localhost:9000/user/update-userinfo HTTP/1.1

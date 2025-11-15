@@ -130,17 +130,24 @@ func (d *DAO) GetAllUsers(ctx *gin.Context) ([]*user_do.TableUserDO, int, error)
 }
 
 // GetAllUsersByPage 查询所有用户信息-分页
-func (d *DAO) GetAllUsersByPage(ctx *gin.Context, query *user_query.GetAllUsersQuery) ([]*user_do.TableUserDO, int, error) {
-	var users = make([]*user_do.TableUserDO, 0)
-	sql := `SELECT id, uuid, nickname, avatar, email, last_login, created_at, updated_at FROM users LIMIT ? OFFSET ?`
-
-	result := db.GlobalDB.Raw(sql, query.PageSize, query.PageIndex*query.PageSize).Scan(&users)
+func (d *DAO) GetAllUsersByPage(ctx *gin.Context, query *user_query.GetAllUsersQuery) ([]*user_do.TableUserDO, int64, error) {
+	var total int64
+	countSQL := `SELECT COUNT(*) FROM users`
+	result := db.GlobalDB.Raw(countSQL).Scan(&total)
 	if result.Error != nil {
-		logger.Error(ctx, "GetAllUsers query error: %s", result.Error.Error())
+		logger.Error(ctx, "GetAllUsersByPage count error: %s", result.Error.Error())
 		return nil, 0, result.Error
 	}
 
-	return users, len(users), nil
+	var users = make([]*user_do.TableUserDO, 0)
+	sql := `SELECT id, uuid, nickname, avatar, email, last_login, created_at, updated_at FROM users LIMIT ? OFFSET ?`
+	result = db.GlobalDB.Raw(sql, query.PageSize, query.PageIndex*query.PageSize).Scan(&users)
+	if result.Error != nil {
+		logger.Error(ctx, "GetAllUsersByPage query error: %s", result.Error.Error())
+		return nil, 0, result.Error
+	}
+
+	return users, total, nil
 }
 
 // UpdateUserInfo 更新用户信息

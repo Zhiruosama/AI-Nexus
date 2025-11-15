@@ -36,12 +36,12 @@ func init() {
 		)
 
 		if initErr != nil {
-			log.Printf("[gRPC Client] Create gRPC client failed: %v", initErr)
+			log.Printf("[gRPC] Create gRPC client failed: %v\n", initErr)
 			return
 		}
 
 		serviceClient = NewVarifyServiceClient(conn)
-		log.Printf("[gRPC] Create gRPC client success: %s (Insecure)", serverAddress)
+		log.Printf("[gRPC] Create gRPC client success: %s\n", serverAddress)
 	})
 }
 

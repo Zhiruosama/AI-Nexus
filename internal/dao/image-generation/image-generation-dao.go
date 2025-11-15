@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	image_generation_do "github.com/Zhiruosama/ai_nexus/internal/domain/do/image-generation"
+	image_generation_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/image-generation"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/db"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/logger"
 	"github.com/gin-gonic/gin"
@@ -42,6 +43,7 @@ func (d *DAO) CreateModel(ctx *gin.Context, model *image_generation_do.TableImag
 // DeleteModel 删除模型
 func (d *DAO) DeleteModel(ctx *gin.Context, modelID string) error {
 	sql := "DELETE FROM image_generation_models WHERE model_id = ?"
+
 	result := db.GlobalDB.Exec(sql, modelID)
 	if result.Error != nil {
 		logger.Error(ctx, "DeleteModel error: %s", result.Error.Error())
@@ -52,15 +54,18 @@ func (d *DAO) DeleteModel(ctx *gin.Context, modelID string) error {
 }
 
 // UpdateModel 更新模型数据
-func (d *DAO) UpdateModel(ctx *gin.Context, modelID string, updates map[string]interface{}) error {
+func (d *DAO) UpdateModel(ctx *gin.Context, modelID string, updates map[string]any) error {
 	set := make([]string, 0, len(updates))
-	args := make([]interface{}, 0, len(updates)+1)
+	args := make([]any, 0, len(updates)+1)
+
 	for k, v := range updates {
 		set = append(set, k+" = ?")
 		args = append(args, v)
 	}
+
 	sql := "UPDATE image_generation_models SET " + strings.Join(set, ", ") + " WHERE model_id = ?"
 	args = append(args, modelID)
+
 	result := db.GlobalDB.Exec(sql, args...)
 	if result.Error != nil {
 		logger.Error(ctx, "UpdateModel error: %s", result.Error.Error())
@@ -71,54 +76,116 @@ func (d *DAO) UpdateModel(ctx *gin.Context, modelID string, updates map[string]i
 
 // GetModelInfo 获取模型数据
 func (d *DAO) GetModelInfo(ctx *gin.Context, modelID string) (*image_generation_do.TableImageGenerationModelsDO, error) {
-	var model *image_generation_do.TableImageGenerationModelsDO
+	var model image_generation_do.TableImageGenerationModelsDO
 	sql := `SELECT * FROM image_generation_models WHERE model_id = ?`
+
 	result := db.GlobalDB.Raw(sql, modelID).Scan(&model)
 	if result.Error != nil {
 		logger.Error(ctx, "GetModelByID error: %s", result.Error.Error())
 		return nil, result.Error
 	}
-	return model, nil
+	return &model, nil
 }
 
-// QueryModelIDs 根据具体信息查询模型ID
-func (d *DAO) QueryModelIDs(ctx *gin.Context, filters map[string]interface{}, q string) ([]string, error) {
-	base := `SELECT model_id FROM image_generation_models WHERE 1=1`
-	where := make([]string, 0)
-	args := make([]interface{}, 0)
-	if v, ok := filters["model_name"].(string); ok && v != "" {
-		where = append(where, "model_name LIKE ?")
-		args = append(args, "%"+v+"%")
-	}
-	if v, ok := filters["model_type"].(string); ok && v != "" {
-		where = append(where, "model_type = ?")
-		args = append(args, v)
-	}
-	if v, ok := filters["provider"].(string); ok && v != "" {
-		where = append(where, "provider = ?")
-		args = append(args, v)
-	}
-	if v, ok := filters["is_active"].(bool); ok {
-		where = append(where, "is_active = ?")
-		args = append(args, v)
-	}
-	if v, ok := filters["is_recommended"].(bool); ok {
-		where = append(where, "is_recommended = ?")
-		args = append(args, v)
-	}
-	if q != "" {
-		where = append(where, "(model_name LIKE ? OR description LIKE ? OR tags LIKE ?)")
-		args = append(args, "%"+q+"%", "%"+q+"%", "%"+q+"%")
-	}
-	sql := base
-	if len(where) > 0 {
-		sql += " AND " + strings.Join(where, " AND ")
-	}
-	var modelIDs []string
-	result := db.GlobalDB.Raw(sql, args...).Scan(&modelIDs)
+// QueryModels 根据具体信息查询模型列表
+func (d *DAO) QueryModels(ctx *gin.Context, query *image_generation_query.ModelsQuery) ([]*image_generation_do.TableImageGenerationModelsDO, int64, error) {
+	base := `SELECT * FROM image_generation_models WHERE 1=1`
+	countBase := `SELECT COUNT(*) FROM image_generation_models WHERE 1=1`
+
+	whereClause, args := buildQueryCondition(query)
+
+	var total int64
+	countSQL := countBase + whereClause
+	result := db.GlobalDB.Raw(countSQL, args...).Scan(&total)
 	if result.Error != nil {
-		logger.Error(ctx, "QueryModelIDs error: %s", result.Error.Error())
-		return nil, result.Error
+		logger.Error(ctx, "QueryModels count error: %s", result.Error.Error())
+		return nil, 0, result.Error
 	}
-	return modelIDs, nil
+
+	offset := query.PageIndex * query.PageSize
+	sql := base + whereClause + " ORDER BY sort_order DESC, created_at DESC LIMIT ? OFFSET ?"
+	queryArgs := append(args, query.PageSize, offset)
+
+	var models []*image_generation_do.TableImageGenerationModelsDO
+	result = db.GlobalDB.Raw(sql, queryArgs...).Scan(&models)
+	if result.Error != nil {
+		logger.Error(ctx, "QueryModels error: %s", result.Error.Error())
+		return nil, 0, result.Error
+	}
+
+	return models, total, nil
+}
+
+// buildQueryCondition 构建查询条件
+func buildQueryCondition(query *image_generation_query.ModelsQuery) (string, []any) {
+	where := make([]string, 0)
+	args := make([]any, 0)
+
+	if query.ModelType != nil && *query.ModelType != "" {
+		where = append(where, "model_type = ?")
+		args = append(args, *query.ModelType)
+	}
+
+	if query.Provider != nil && *query.Provider != "" {
+		where = append(where, "provider = ?")
+		args = append(args, *query.Provider)
+	}
+
+	if query.TotalUsage != nil {
+		where = append(where, "total_usage >= ?")
+		args = append(args, *query.TotalUsage)
+	}
+
+	if query.SuccessRate != nil {
+		where = append(where, "success_rate >= ?")
+		args = append(args, *query.SuccessRate)
+	}
+
+	if query.IsActive != nil {
+		where = append(where, "is_active = ?")
+		args = append(args, *query.IsActive)
+	}
+
+	if query.IsRecommended != nil {
+		where = append(where, "is_recommended = ?")
+		args = append(args, *query.IsRecommended)
+	}
+
+	if query.ThirdPartyModelID != nil && *query.ThirdPartyModelID != "" {
+		where = append(where, "third_party_model_id = ?")
+		args = append(args, *query.ThirdPartyModelID)
+	}
+
+	if query.Width != nil {
+		where = append(where, "default_width >= ? OR max_width >= ?")
+		args = append(args, *query.Width, *query.Width)
+	}
+
+	if query.Height != nil {
+		where = append(where, "default_height >= ? OR max_height >= ?")
+		args = append(args, *query.Height, *query.Height)
+	}
+
+	if query.Steps != nil {
+		where = append(where, "min_steps <= ? AND max_steps >= ?")
+		args = append(args, *query.Steps, *query.Steps)
+	}
+
+	if query.CreateAt != nil && *query.CreateAt != "" {
+		where = append(where, "created_at >= ?")
+		args = append(args, *query.CreateAt)
+	}
+
+	if query.Q != nil && *query.Q != "" {
+		where = append(where, "(model_name LIKE ? OR description LIKE ? OR tags LIKE ?)")
+		searchPattern := "%" + *query.Q + "%"
+		args = append(args, searchPattern, searchPattern, searchPattern)
+	}
+
+	whereClause := ""
+	if len(where) > 0 {
+		whereClause = " AND " + strings.Join(where, " AND ")
+	}
+
+	return whereClause, args
 }

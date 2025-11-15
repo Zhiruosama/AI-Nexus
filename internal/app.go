@@ -34,7 +34,7 @@ func Run() {
 	routes_image_generation.InitImageGenerationRoutes(route)
 
 	// 启动 app
-	log.Printf("[INFO] Server start on: %s:%d", configs.GlobalConfig.Server.Host, configs.GlobalConfig.Server.Port)
+	log.Printf("[Server] Server start on: %s:%d\n", configs.GlobalConfig.Server.Host, configs.GlobalConfig.Server.Port)
 	err := route.Run(configs.GlobalConfig.Server.SerialString())
 	if err != nil {
 		log.Fatalln("[ERROR] Server start error:", err.Error())

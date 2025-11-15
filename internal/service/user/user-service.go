@@ -407,7 +407,7 @@ func (s *Service) GetAllUsersByPage(ctx *gin.Context, users *user_vo.ListUserInf
 
 	users.Code = 200
 	users.Message = "Success get all user info by page"
-	users.Count = count
+	users.Count = int(count)
 	for _, userDo := range userDos {
 		users.Users = append(users.Users, user_vo.TableUserVO{
 			ID:        userDo.ID,
