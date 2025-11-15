@@ -19,6 +19,11 @@ func InitImageGenerationRoutes(r *gin.Engine) {
 		model.Use(middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware())
 		{
 			model.POST("/create", igc.CreateModel)
+			model.POST("/batchcreate", igc.BatchCreateModels)
+			model.DELETE("/delete", igc.DeleteModel)
+			model.PUT("/update", igc.UpdateModel)
+			model.GET("/info", igc.GetModelInfo)
+			model.GET("/queryids", igc.QueryModelIDs)
 		}
 	}
 }

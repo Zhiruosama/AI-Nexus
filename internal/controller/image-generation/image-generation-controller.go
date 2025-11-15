@@ -4,6 +4,8 @@ package imagegeneration
 import (
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 
 	image_generation_dto "github.com/Zhiruosama/ai_nexus/internal/domain/dto/image-generation"
 	image_generation_service "github.com/Zhiruosama/ai_nexus/internal/service/image-generation"
@@ -54,6 +56,189 @@ func (c *Controller) CreateModel(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"code":    http.StatusOK,
 		"message": "create model success",
+	})
+}
+
+// BatchCreateModels 批量添加模型
+func (c *Controller) BatchCreateModels(ctx *gin.Context) {
+	var req image_generation_dto.BatchCreateModelsDTO
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadRequest,
+			"message": "The input data does not meet the requirements.",
+		})
+		return
+	}
+
+	// 校验每个模型参数
+	for _, model := range req.Models {
+		if err := validateModelCreateRequest(&model); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"code":    http.StatusBadRequest,
+				"message": err.Error(),
+			})
+		}
+	}
+
+	// 批量添加模型
+	for _, model := range req.Models {
+		if err := c.ImageGenerationService.CreateModel(ctx, &model); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"code":    http.StatusBadRequest,
+				"message": err.Error(),
+			})
+			return
+		}
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "create model success",
+	})
+}
+
+// DeleteModel 删除模型
+func (c *Controller) DeleteModel(ctx *gin.Context) {
+	idsParam := ctx.Query("ids")
+	if idsParam != "" {
+		parts := strings.Split(idsParam, ",")
+		seen := make(map[string]struct{})
+		ids := make([]string, 0, len(parts))
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if p == "" {
+				continue
+			}
+			if _, ok := seen[p]; !ok {
+				seen[p] = struct{}{}
+				ids = append(ids, p)
+			}
+		}
+		if len(ids) == 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"code":    http.StatusBadRequest,
+				"message": "ids is required",
+			})
+			return
+		}
+		for _, model_id := range ids {
+			if err := c.ImageGenerationService.DeleteModel(ctx, model_id); err != nil {
+				ctx.JSON(http.StatusBadRequest, gin.H{
+					"code":    http.StatusBadRequest,
+					"message": err.Error(),
+				})
+				return
+			}
+		}
+		ctx.JSON(http.StatusOK, gin.H{
+			"code":    http.StatusOK,
+			"message": "delete models success",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "delete model success",
+	})
+}
+
+// UpdateModel 更新模型数据
+func (c *Controller) UpdateModel(ctx *gin.Context) {
+	var req image_generation_dto.ModelUpdateDTO
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadRequest,
+			"message": "The input data does not meet the requirements.",
+		})
+		return
+	}
+	if req.ModelID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadRequest,
+			"message": "model_id is required",
+		})
+		return
+	}
+	if err := c.ImageGenerationService.UpdateModel(ctx, &req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "update model success",
+	})
+}
+
+// GetModelInfo 获取模型数据
+func (c *Controller) GetModelInfo(ctx *gin.Context) {
+	modelID := ctx.Query("model_id")
+	if modelID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadRequest,
+			"message": "model_id is required",
+		})
+		return
+	}
+
+	model, err := c.ImageGenerationService.GetModelInfo(ctx, modelID)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "get modelinfo success",
+		"data":    model,
+	})
+}
+
+// QueryModelIDs 根据具体信息查询模型ID
+func (c *Controller) QueryModelIDs(ctx *gin.Context) {
+	modelName := ctx.Query("model_name")
+	modelType := ctx.Query("model_type")
+	isActiveStr := ctx.Query("is_active")
+	isRecommendedStr := ctx.Query("is_recommended")
+	// q 全文关键字（在 model_name/description/tags 上做 OR 模糊）
+	q := ctx.Query("q")
+
+	filters := map[string]interface{}{}
+	if modelName != "" {
+		filters["model_name"] = modelName
+	}
+	if modelType != "" {
+		filters["model_type"] = modelType
+	}
+	if isActiveStr != "" {
+		b, _ := strconv.ParseBool(isActiveStr)
+		filters["is_active"] = b
+	}
+	if isRecommendedStr != "" {
+		b, _ := strconv.ParseBool(isRecommendedStr)
+		filters["is_recommended"] = b
+	}
+
+	modelIDs, err := c.ImageGenerationService.QueryModelIDs(ctx, filters, q)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "query modelids success",
+		"data":    modelIDs,
 	})
 }
 
