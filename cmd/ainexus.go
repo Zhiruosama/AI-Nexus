@@ -15,6 +15,9 @@ func main() {
 	defer rabbitmq.GlobalMQ.Close()
 	defer websocket.GlobalHub.Close()
 
+	for !rabbitmq.GlobalMQ.IsConnected() {
+	}
+
 	app.StartWorker(3, app.StartText2ImgWorker)
 	app.StartWorker(2, app.StartImg2ImgWorker)
 

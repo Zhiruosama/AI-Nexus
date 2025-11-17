@@ -1,11 +1,15 @@
 package pkg
 
 import (
+	"fmt"
 	"image"
+
 	// 导入图片解码器以支持 gif, jpeg, png 格式
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -66,4 +70,106 @@ func ProcessImageToWebP(ctx *gin.Context, srcPath string, quality int) bool {
 		return false
 	}
 	return true
+}
+
+// DownloadAndSaveImages 从URL切片下载图片并保存到本地,转换为WebP格式
+func DownloadAndSaveImages(imgURL string, quality int) (string, error) {
+	if len(imgURL) == 0 {
+		return "", fmt.Errorf("image URL is empty")
+	}
+
+	savePath := "static/images/"
+
+	// 确保保存目录存在
+	if err := os.MkdirAll(savePath, 0755); err != nil {
+		return "", fmt.Errorf("create save directory error: %w", err)
+	}
+
+	var outputPath string
+	client := &http.Client{}
+
+	// 下载图片
+	resp, err := client.Get(imgURL)
+	if err != nil {
+		return "", fmt.Errorf("download image error: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return "", fmt.Errorf("download image failed with status: %d", resp.StatusCode)
+	}
+
+	// 从URL中提取文件名
+	urlPath := filepath.Base(imgURL)
+	ext := filepath.Ext(urlPath)
+	if ext == "" {
+		ext = ".png"
+	}
+
+	// 生成临时文件路径
+	tempFilePath := filepath.Join(savePath, urlPath)
+	if filepath.Ext(tempFilePath) == "" {
+		tempFilePath += ext
+	}
+
+	// 保存临时图片
+	tempFile, err := os.Create(tempFilePath)
+	if err != nil {
+		resp.Body.Close()
+		return "", fmt.Errorf("create temp file error: %w", err)
+	}
+
+	_, err = io.Copy(tempFile, resp.Body)
+	resp.Body.Close()
+	tempFile.Close()
+
+	if err != nil {
+		os.Remove(tempFilePath)
+		return "", fmt.Errorf("save image to temp file error: %w", err)
+	}
+
+	// 转换为WebP
+	file, err := os.Open(tempFilePath)
+	if err != nil {
+		os.Remove(tempFilePath)
+		return "", fmt.Errorf("open temp file error: %w", err)
+	}
+
+	img, _, err := image.Decode(file)
+	file.Close()
+	if err != nil {
+		os.Remove(tempFilePath)
+		return "", fmt.Errorf("decode image error: %w", err)
+	}
+
+	// 生成WebP文件路径
+	webpPath := strings.TrimSuffix(tempFilePath, filepath.Ext(tempFilePath)) + ".webp"
+	outFile, err := os.Create(webpPath)
+	if err != nil {
+		os.Remove(tempFilePath)
+		return "", fmt.Errorf("create webp file error: %w", err)
+	}
+
+	if quality <= 0 || quality > 100 {
+		quality = 80
+	}
+
+	err = webp.Encode(outFile, img, &webp.Options{
+		Lossless: false,
+		Quality:  float32(quality),
+	})
+	outFile.Close()
+
+	if err != nil {
+		os.Remove(tempFilePath)
+		os.Remove(webpPath)
+		return "", fmt.Errorf("encode webp error: %w", err)
+	}
+
+	// 删除原始临时文件
+	os.Remove(tempFilePath)
+
+	outputPath = webpPath
+
+	return outputPath, nil
 }

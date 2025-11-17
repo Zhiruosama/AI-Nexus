@@ -465,23 +465,18 @@ func generateRandomString(n int) string {
 
 // HandleWebSocket 处理 WebSocket 连接
 func (uc *Controller) HandleWebSocket(ctx *gin.Context) {
-	userID, exists := ctx.Get(middleware.UserIDKey)
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"code":    http.StatusUnauthorized,
-			"message": "Unauthorized, please log in first",
+	tokenString := ctx.Query("token")
+	claims, err := middleware.ParseToken(tokenString)
+
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    middleware.ParseTokenFailed,
+			"message": err.Error(),
 		})
 		return
 	}
 
-	userUUID, ok := userID.(string)
-	if !ok {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    http.StatusInternalServerError,
-			"message": "Invalid user_id type",
-		})
-		return
-	}
+	userUUID := claims.UserID
 
 	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
@@ -495,5 +490,5 @@ func (uc *Controller) HandleWebSocket(ctx *gin.Context) {
 	go client.ReadPump()
 	go client.WritePump()
 
-	log.Printf("[WebSocket] Client %s connected and pumps started\n", userUUID)
+	log.Printf("[WebSocket] Client %s connection established, pumps started\n", userUUID)
 }

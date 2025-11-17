@@ -91,7 +91,7 @@ func (h *Hub) Close() {
 
 	h.clients.Range(func(_, value any) bool {
 		client := value.(*Client)
-		close(client.send)
+		client.closeSend()
 		return true
 	})
 
@@ -102,7 +102,7 @@ func (h *Hub) Close() {
 func (h *Hub) registerClient(client *Client) {
 	if oldClient, exists := h.clients.LoadAndDelete(client.UserUUID); exists {
 		old := oldClient.(*Client)
-		close(old.send)
+		old.closeSend()
 		log.Printf("[WebSocket] Closed old connection for user: %s\n", client.UserUUID)
 	}
 
@@ -117,7 +117,7 @@ func (h *Hub) registerClient(client *Client) {
 // unregisterClient 注销客户端
 func (h *Hub) unregisterClient(client *Client) {
 	if _, exists := h.clients.LoadAndDelete(client.UserUUID); exists {
-		close(client.send)
+		client.closeSend()
 		log.Printf("[WebSocket] User disconnected: %s\n", client.UserUUID)
 	}
 }
@@ -132,7 +132,7 @@ func (h *Hub) broadcastMessage(message Message) {
 		default:
 			log.Printf("[WebSocket] Send channel full, closing connection for user: %s\n", message.UserUUID)
 			h.clients.Delete(message.UserUUID)
-			close(c.send)
+			c.closeSend()
 		}
 	}
 }

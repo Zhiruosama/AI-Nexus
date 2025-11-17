@@ -69,7 +69,6 @@ CREATE TABLE IF NOT EXISTS `image_generation_tasks` (
 
   -- 性能指标
   `generation_time_ms` INT UNSIGNED COMMENT '生成耗时(毫秒)',
-  `queue_time_ms` INT UNSIGNED COMMENT '队列等待时长(毫秒)',
 
   -- 时间戳
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

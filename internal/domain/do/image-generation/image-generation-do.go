@@ -36,7 +36,6 @@ type TableImageGenerationTaskDO struct {
 
 	// 性能指标
 	GenerationTimeMs int `gorm:"column:generation_time_ms" json:"generation_time_ms"`
-	QueueTimeMs      int `gorm:"column:queue_time_ms" json:"queue_time_ms"`
 
 	// 时间戳
 	CreatedAt   string `gorm:"column:created_at" json:"created_at"`

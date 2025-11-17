@@ -25,5 +25,11 @@ func InitImageGenerationRoutes(r *gin.Engine) {
 			model.GET("/info", igc.GetModelInfo)
 			model.GET("/query", igc.QueryModels)
 		}
+
+		img := imageGeneration.Group("/image")
+		img.Use(middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware())
+		{
+			img.POST("/text2img", igc.Text2Img)
+		}
 	}
 }

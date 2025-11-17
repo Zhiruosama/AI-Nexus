@@ -46,6 +46,8 @@ const (
 	LoginPurposeError
 	// ResetPasswordPurposeError 重置密码目的错误
 	ResetPasswordPurposeError
+	// ParseTokenFailed 解析 token 失败
+	ParseTokenFailed
 )
 
 const (

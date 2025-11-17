@@ -18,11 +18,12 @@ const (
 
 // Client WebSocket 客户端
 type Client struct {
-	UserUUID  string
-	conn      *websocket.Conn
-	send      chan Message
-	hub       *Hub
-	closeOnce sync.Once
+	UserUUID      string
+	conn          *websocket.Conn
+	send          chan Message
+	hub           *Hub
+	closeOnce     sync.Once
+	closeSendOnce sync.Once
 }
 
 // NewClient 创建新的 WebSocket 客户端
@@ -110,5 +111,12 @@ func (c *Client) close() {
 			log.Printf("[WebSocket] Close connection error for user %s: %v\n", c.UserUUID, err)
 		}
 		c.hub.unregister <- c
+	})
+}
+
+// closeSend 安全关闭 send channel
+func (c *Client) closeSend() {
+	c.closeSendOnce.Do(func() {
+		close(c.send)
 	})
 }

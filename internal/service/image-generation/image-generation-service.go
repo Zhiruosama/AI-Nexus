@@ -2,13 +2,18 @@
 package imagegeneration
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	image_generation_dao "github.com/Zhiruosama/ai_nexus/internal/dao/image-generation"
 	image_generation_do "github.com/Zhiruosama/ai_nexus/internal/domain/do/image-generation"
 	image_generation_dto "github.com/Zhiruosama/ai_nexus/internal/domain/dto/image-generation"
 	image_generation_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/image-generation"
+	"github.com/Zhiruosama/ai_nexus/internal/pkg/logger"
+	rabbitmq "github.com/Zhiruosama/ai_nexus/internal/pkg/queue"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // Service 对应 imagegeneration 模块的 Service 结构
@@ -200,4 +205,78 @@ func (s *Service) QueryModels(ctx *gin.Context, query *image_generation_query.Mo
 	}
 
 	return models, total, nil
+}
+
+// Text2Img 文生图
+func (s *Service) Text2Img(ctx *gin.Context, dto *image_generation_dto.Text2ImgDTO) (string, error) {
+	ok, err := s.ImageGenerationDAO.CheckModelExists(ctx, dto.ModelID)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", fmt.Errorf("model_id '%s' does not exist", dto.ModelID)
+	}
+
+	taskId := uuid.New().String()
+	uuid, _ := ctx.Get("user_id")
+
+	do := image_generation_do.TableImageGenerationTaskDO{
+		TaskID:            taskId,
+		UserUUID:          uuid.(string),
+		TaskType:          1,
+		Status:            0,
+		Prompt:            dto.Prompt,
+		NegativePrompt:    dto.NegativePrompt,
+		ModelID:           dto.ModelID,
+		Width:             dto.Width,
+		Height:            dto.Height,
+		NumInferenceSteps: dto.NumInferenceSteps,
+		GuidanceScale:     dto.GuidanceScale,
+		Seed:              dto.Seed,
+	}
+
+	if err := s.ImageGenerationDAO.CreateTask(ctx, &do); err != nil {
+		return "", err
+	}
+
+	message := rabbitmq.TaskMessage{
+		TaskID:   taskId,
+		UserUUID: uuid.(string),
+		Payload: rabbitmq.Text2ImgPayload{
+			Prompt:            dto.Prompt,
+			NegativePrompt:    dto.NegativePrompt,
+			ModelID:           dto.ModelID,
+			Width:             dto.Width,
+			Height:            dto.Height,
+			NumInferenceSteps: dto.NumInferenceSteps,
+			GuidanceScale:     dto.GuidanceScale,
+			Seed:              dto.Seed,
+		},
+	}
+
+	c, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	if err := rabbitmq.Publish(c, 1, &message); err != nil {
+		logger.Error(ctx, "Publish to mq error(text2img): %s", err.Error())
+
+		errs := s.ImageGenerationDAO.DeleteTask(ctx, taskId)
+		if errs != nil {
+			logger.Error(ctx, "DeleteTask error: %s", errs.Error())
+		}
+
+		return "", err
+	}
+
+	now := time.Now()
+	mysqlDatetime := now.Format("2006-01-02 15:04:05")
+	if err := s.ImageGenerationDAO.UpdateTaskParams("queued_at", mysqlDatetime, taskId); err != nil {
+		return "", err
+	}
+
+	if err := s.ImageGenerationDAO.UpdateTaskParams("status", 1, taskId); err != nil {
+		return "", err
+	}
+
+	return taskId, nil
 }

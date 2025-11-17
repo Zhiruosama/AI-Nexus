@@ -47,3 +47,15 @@ type ModelUpdateDTO struct {
 	MinSteps          *int    `json:"min_steps"`
 	MaxSteps          *int    `json:"max_steps"`
 }
+
+// Text2ImgDTO 文生图负载
+type Text2ImgDTO struct {
+	Prompt            string  `json:"prompt"`
+	NegativePrompt    string  `json:"negative_prompt,omitempty"`
+	ModelID           string  `json:"model_id"`
+	Width             int     `json:"width,omitempty"`
+	Height            int     `json:"height,omitempty"`
+	NumInferenceSteps int     `json:"num_inference_steps,omitempty"`
+	GuidanceScale     float64 `json:"guidance_scale,omitempty"`
+	Seed              int64   `json:"seed,omitempty"`
+}

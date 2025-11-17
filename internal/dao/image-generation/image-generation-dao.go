@@ -2,6 +2,7 @@
 package imagegeneration
 
 import (
+	"log"
 	"strings"
 
 	image_generation_do "github.com/Zhiruosama/ai_nexus/internal/domain/do/image-generation"
@@ -114,6 +115,77 @@ func (d *DAO) QueryModels(ctx *gin.Context, query *image_generation_query.Models
 	}
 
 	return models, total, nil
+}
+
+// GetInfoFromModel 获取模型信息
+func GetInfoFromModel[T any](d *DAO, key, modelId string) (T, error) {
+	sql := "SELECT " + key + " FROM image_generation_models WHERE model_id = ?"
+
+	var val T
+	result := db.GlobalDB.Raw(sql, modelId).Scan(&val)
+
+	if result.Error != nil {
+		log.Fatalf("GetInfoFromModel error: %s\n", result.Error.Error())
+		var zero T
+		return zero, result.Error
+	}
+
+	return val, nil
+}
+
+// CreateTask 创建新任务
+func (d *DAO) CreateTask(ctx *gin.Context, do *image_generation_do.TableImageGenerationTaskDO) error {
+	sql := `INSERT INTO image_generation_tasks (task_id, user_uuid, task_type, status, prompt, negative_prompt, model_id, width, height, num_inference_steps, guidance_scale, seed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	result := db.GlobalDB.Exec(sql, do.TaskID, do.UserUUID, do.TaskType, do.Status, do.Prompt, do.NegativePrompt, do.ModelID, do.Width, do.Height, do.NumInferenceSteps, do.GuidanceScale, do.Seed)
+
+	if result.Error != nil {
+		logger.Error(ctx, "Create task error: %s", result.Error.Error())
+		return result.Error
+	}
+
+	return nil
+}
+
+// DeleteTask 删除任务
+func (d *DAO) DeleteTask(ctx *gin.Context, taskId string) error {
+	sql := "DELETE FROM image_generation_tasks WHERE task_id = ?"
+	result := db.GlobalDB.Exec(sql, taskId)
+
+	if result.Error != nil {
+		logger.Error(ctx, "DeleteTask error: %s", result.Error.Error())
+		return result.Error
+	}
+
+	return nil
+}
+
+// UpdateTaskParams 更新任务表的参数
+func (d *DAO) UpdateTaskParams(key string, val any, taskID string) error {
+	sql := "UPDATE image_generation_tasks SET " + key + " = ? WHERE task_id = ?"
+	result := db.GlobalDB.Exec(sql, val, taskID)
+
+	if result.Error != nil {
+		log.Fatalf("UpdateTaskParams error: %s\n", result.Error.Error())
+		return result.Error
+	}
+
+	return nil
+}
+
+// GetTaskInfo 获取任务信息
+func GetTaskInfo[T any](d *DAO, key, taskId string) (T, error) {
+	sql := "SELECT " + key + " FROM image_generation_tasks WHERE task_id = ?"
+
+	var val T
+	result := db.GlobalDB.Raw(sql, taskId).Scan(&val)
+
+	if result.Error != nil {
+		log.Fatalf("GetTaskInfo error: %s\n", result.Error.Error())
+		var zero T
+		return zero, result.Error
+	}
+
+	return val, nil
 }
 
 // buildQueryCondition 构建查询条件

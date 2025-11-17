@@ -1,0 +1,18 @@
+@token = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFjMjEwNzItNDdjNi00NTNmLWExMjItZDJiNGRiZjRjMjE2IiwiaXNzIjoiYWktbmV4dXMtYXV0aCIsImV4cCI6MTc2MzkwOTAxOCwiaWF0IjoxNzYzMzA0MjE4fQ.KW28eZqSpwHB8JSi3LCgoAkGB1JCPVhm3_Dtu9IhTIY
+
+### 生图模块
+### 文生图: seed 参数为可选
+POST http://127.0.0.1:9000/image-generation/image/text2img
+Authorization: {{token}}
+Content-Type: application/json
+
+{
+  "prompt": "一个经典二次元黑长直jk女孩",
+  "negative_prompt": "",
+  "model_id": "qwen-image",
+  "width": 1024,
+  "height": 1024,
+  "num_inference_steps": 20,
+  "guidance_scale": 7.5,
+  "seed": 0
+}

@@ -35,9 +35,8 @@ type Message struct {
 
 // TaskProgressData 任务进度数据
 type TaskProgressData struct {
-	TaskID  string `json:"task_id"`
-	Status  string `json:"status"`
-	Message string `json:"message,omitempty"`
+	TaskID string `json:"task_id"`
+	Status string `json:"status"`
 }
 
 // TaskCompletedData 任务完成数据

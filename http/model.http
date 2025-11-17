@@ -1,4 +1,4 @@
-## 生图模块
+## 模型模块
 ### 创建新模型
 POST http://127.0.0.1:9000/image-generation/model/create
 Content-Type: application/json
@@ -90,7 +90,7 @@ Content-Type: application/json
 }
 
 ### 获取模型信息
-GET http://127.0.0.1:9000/image-generation/model/info?model_id=Qwen-Image
+GET http://127.0.0.1:9000/image-generation/model/info?model_id=qwen-image
 
 ### 查询模型列表 - 基础查询（无条件，默认分页）
 GET http://127.0.0.1:9000/image-generation/model/query

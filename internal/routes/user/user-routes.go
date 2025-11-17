@@ -24,6 +24,6 @@ func InitUserRoutes(r *gin.Engine) {
 		user.PUT("/update-userinfo", middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.UpdateUserInfo)
 		user.POST("/reset-password", middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.ResetUserPassword)
 		user.DELETE("/destroy", middleware.AuthMiddleware(), uc.DestroyUser)
-		user.GET("/ws", middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.HandleWebSocket)
+		user.GET("/ws", middleware.RateLimitingMiddleware(), uc.HandleWebSocket)
 	}
 }
