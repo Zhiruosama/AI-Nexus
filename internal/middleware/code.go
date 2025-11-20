@@ -22,6 +22,8 @@ const (
 	PurposeInvalid
 	// UserAlreadyExist 用户已存在
 	UserAlreadyExist
+	// UserNotExists 用户不存在
+	UserNotExists
 	// LoginParamError 登录参数错误
 	LoginParamError
 	// UserInformationEmpty 用户信息为空
@@ -48,6 +50,8 @@ const (
 	ResetPasswordPurposeError
 	// ParseTokenFailed 解析 token 失败
 	ParseTokenFailed
+	// RedisError Redis 错误
+	RedisError
 )
 
 const (
