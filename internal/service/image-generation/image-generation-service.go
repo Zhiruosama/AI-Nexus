@@ -3,13 +3,21 @@ package imagegeneration
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"slices"
 	"time"
 
+	"github.com/Zhiruosama/ai_nexus/configs"
 	image_generation_dao "github.com/Zhiruosama/ai_nexus/internal/dao/image-generation"
 	image_generation_do "github.com/Zhiruosama/ai_nexus/internal/domain/do/image-generation"
 	image_generation_dto "github.com/Zhiruosama/ai_nexus/internal/domain/dto/image-generation"
 	image_generation_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/image-generation"
+	"github.com/Zhiruosama/ai_nexus/internal/pkg"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/logger"
 	rabbitmq "github.com/Zhiruosama/ai_nexus/internal/pkg/queue"
 	"github.com/gin-gonic/gin"
@@ -274,6 +282,141 @@ func (s *Service) Text2Img(ctx *gin.Context, dto *image_generation_dto.Text2ImgD
 		return "", err
 	}
 
+	if err := s.ImageGenerationDAO.UpdateTaskParams("status", 1, taskId); err != nil {
+		return "", err
+	}
+
+	return taskId, nil
+}
+
+// Img2Img 图生图
+func (s *Service) Img2Img(ctx *gin.Context, dto *image_generation_dto.Img2ImgDTO) (string, error) {
+	ok, err := s.ImageGenerationDAO.CheckModelExists(ctx, dto.ModelID)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", fmt.Errorf("model_id '%s' does not exist", dto.ModelID)
+	}
+
+	taskId := uuid.New().String()
+	uuid, _ := ctx.Get("user_id")
+
+	// 拿到图片 做sha256校验
+	file, err := dto.InputImage.Open()
+
+	fmt.Println(file)
+
+	if err != nil {
+		logger.Error(ctx, "Open uploaded file error: %s", err.Error())
+		return "", err
+	}
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			logger.Error(ctx, "Close uploaded file error: %s", closeErr.Error())
+		}
+	}()
+
+	hash := sha256.New()
+	if _, err = io.Copy(hash, file); err != nil {
+		logger.Error(ctx, "calcute sha256 error: %s", err.Error())
+		return "", err
+	}
+	calculatedHash := hex.EncodeToString(hash.Sum(nil))
+
+	fmt.Println(calculatedHash)
+
+	if calculatedHash != dto.Sha256 {
+		return "", fmt.Errorf("the file destroyed")
+	}
+
+	//sha256校验通过 进行落盘
+	ext := filepath.Ext(dto.InputImage.Filename)
+	allowedExts := []string{".png", ".jpg", ".jpeg", ".webp"}
+	isValid := slices.Contains(allowedExts, ext)
+	if !isValid {
+		return "", fmt.Errorf("unsupported file format: %s", ext)
+	}
+
+	if err := os.MkdirAll(filepath.Join("static", "images"), 0755); err != nil {
+		return "", err
+	}
+
+	filename := "img2img-" + taskId + ext
+	dst := filepath.Join("static", "images", filename)
+
+	if err := ctx.SaveUploadedFile(dto.InputImage, dst); err != nil {
+		return "", err
+	}
+
+	if ext != ".webp" {
+		ok := pkg.ProcessImageToWebP(ctx, dst, 100)
+		if !ok {
+			os.Remove(dst)
+			return "", fmt.Errorf("failed to convert image to webp format")
+		}
+		filename = "img2img-" + taskId + ".webp"
+		dst = filepath.Join("static", "images", filename)
+	}
+
+	// 拼接负载所需URL 从http://服务ip及端口/static/images/文件名
+	inputImageURL := fmt.Sprintf("http://%s/static/images/%s", configs.GlobalConfig.Server.SerialString(), dto.InputImage.Filename)
+
+	do := image_generation_do.TableImageGenerationTaskDO{
+		TaskID:            taskId,
+		UserUUID:          uuid.(string),
+		TaskType:          2,
+		Status:            0,
+		Prompt:            dto.Prompt,
+		NegativePrompt:    dto.NegativePrompt,
+		ModelID:           dto.ModelID,
+		Width:             dto.Width,
+		Height:            dto.Height,
+		NumInferenceSteps: dto.NumInferenceSteps,
+		GuidanceScale:     dto.GuidanceScale,
+		Seed:              dto.Seed,
+	}
+
+	if err := s.ImageGenerationDAO.CreateTask(ctx, &do); err != nil {
+		return "", err
+	}
+
+	message := rabbitmq.TaskMessage{
+		TaskID:   taskId,
+		UserUUID: uuid.(string),
+		Payload: rabbitmq.Img2ImgPayload{
+			Prompt:            dto.Prompt,
+			NegativePrompt:    dto.NegativePrompt,
+			ModelID:           dto.ModelID,
+			Width:             dto.Width,
+			Height:            dto.Height,
+			NumInferenceSteps: dto.NumInferenceSteps,
+			GuidanceScale:     dto.GuidanceScale,
+			Seed:              dto.Seed,
+			InputImageURL:     inputImageURL,
+			Strength:          dto.Strength,
+		},
+	}
+
+	c, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	if err := rabbitmq.Publish(c, 2, &message); err != nil {
+		logger.Error(ctx, "Publish to mq error(img2img): %s", err.Error())
+
+		errs := s.ImageGenerationDAO.DeleteTask(ctx, taskId)
+		if errs != nil {
+			logger.Error(ctx, "DeleteTask error: %s", errs.Error())
+		}
+
+		return "", err
+	}
+
+	now := time.Now()
+	mysqlDatetime := now.Format("2006-01-02 15:04:05")
+	if err := s.ImageGenerationDAO.UpdateTaskParams("queue_at", mysqlDatetime, taskId); err != nil {
+		return "", err
+	}
 	if err := s.ImageGenerationDAO.UpdateTaskParams("status", 1, taskId); err != nil {
 		return "", err
 	}

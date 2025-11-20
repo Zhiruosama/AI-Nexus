@@ -30,6 +30,7 @@ func InitImageGenerationRoutes(r *gin.Engine) {
 		img.Use(middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware())
 		{
 			img.POST("/text2img", igc.Text2Img)
+			img.POST("/img2img", igc.Img2Img)
 		}
 	}
 }

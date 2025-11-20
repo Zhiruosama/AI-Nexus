@@ -4,16 +4,16 @@ POST http://127.0.0.1:9000/image-generation/model/create
 Content-Type: application/json
 
 {
-  "model_id": "qwen-image",
-  "model_name": "Qwen-Image",
-  "model_type": "text2img",
+  "model_id": "flux.1-dev",
+  "model_name": "FLUX.1-dev",
+  "model_type": "img2img",
   "provider": "modelscope",
-  "description": "千文图像生成模型, 擅长中文文字渲染, 适用于海报、广告等场景",
-  "tags": "高质量,中文渲染",
+  "description": "FLUX.1 [dev] 是一个具有 120 亿参数的修正流变换器，能够根据图像描述生成图像",
+  "tags": "英文渲染",
   "sort_order": 10,
   "is_active": true,
   "is_recommended": true,
-  "third_party_model_id": "Qwen/Qwen-Image",
+  "third_party_model_id": "MusePublic/FLUX.1-Kontext-Dev",
   "base_url": "https://api-inference.modelscope.cn/",
   "default_width": 1024,
   "default_height": 1024,
