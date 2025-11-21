@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"context"
 	"log"
 	"sync"
 	"time"
@@ -23,6 +24,8 @@ type RabbitMQClient struct {
 	notifyClose     chan *amqp.Error // 监听连接关闭事件
 	notifyChanClose chan *amqp.Error // 监听通道关闭事件
 	done            chan bool        // 关闭信号
+	ready           chan struct{}    // 连接就绪信号
+	readyOnce       sync.Once        // 确保 ready 只被关闭一次
 }
 
 // GetChannel 获取通道
@@ -54,6 +57,20 @@ func (c *RabbitMQClient) IsConnected() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.isConnected
+}
+
+// WaitForConnection 等待连接就绪，支持超时控制
+func (c *RabbitMQClient) WaitForConnection(ctx context.Context) error {
+	if c.IsConnected() {
+		return nil
+	}
+
+	select {
+	case <-c.ready:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // Close 关闭客户端
@@ -89,8 +106,9 @@ func init() {
 // newRabbitMQClient 创建一个新的 RabbitMQ 客户端（内部使用）
 func newRabbitMQClient(url string) *RabbitMQClient {
 	client := &RabbitMQClient{
-		url:  url,
-		done: make(chan bool),
+		url:   url,
+		done:  make(chan bool),
+		ready: make(chan struct{}),
 	}
 
 	go client.handleReconnect()
@@ -162,6 +180,10 @@ func (c *RabbitMQClient) connect() error {
 	c.channel = ch
 	c.isConnected = true
 	c.mu.Unlock()
+
+	c.readyOnce.Do(func() {
+		close(c.ready)
+	})
 
 	c.notifyClose = make(chan *amqp.Error)
 	c.conn.NotifyClose(c.notifyClose)

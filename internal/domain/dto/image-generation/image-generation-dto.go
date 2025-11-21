@@ -64,15 +64,15 @@ type Text2ImgDTO struct {
 
 // Img2ImgDTO 图生图负载
 type Img2ImgDTO struct {
-	Prompt            string                `json:"prompt" form:"prompt"`
-	InputImage        *multipart.FileHeader `json:"input_image" form:"input_image"`
-	Strength          float64               `json:"strength,omitempty" form:"strength,omitempty"`
-	Sha256            string                `json:"sha256,omitempty" form:"sha256,omitempty"`
-	NegativePrompt    string                `json:"negative_prompt,omitempty" form:"negative_prompt"`
-	ModelID           string                `json:"model_id" form:"model_id"`
-	Width             int                   `json:"width,omitempty" form:"width,omitempty"`
-	Height            int                   `json:"height,omitempty" form:"height,omitempty"`
-	NumInferenceSteps int                   `json:"num_inference_steps,omitempty" form:"num_inference_steps,omitempty"`
-	GuidanceScale     float64               `json:"guidance_scale,omitempty" form:"guidance_scale,omitempty"`
-	Seed              int64                 `json:"seed,omitempty" form:"seed,omitempty"`
+	Prompt            string                `form:"prompt"`
+	NegativePrompt    string                `form:"negative_prompt,omitempty"`
+	ModelID           string                `form:"model_id"`
+	Width             int                   `form:"width,omitempty"`
+	Height            int                   `form:"height,omitempty"`
+	NumInferenceSteps int                   `form:"num_inference_steps,omitempty"`
+	GuidanceScale     float64               `form:"guidance_scale,omitempty"`
+	Seed              int64                 `form:"seed,omitempty"`
+	InputImage        *multipart.FileHeader `form:"input_image"`
+	Strength          float64               `form:"strength,omitempty"`
+	Sha256            string                `form:"sha256"`
 }

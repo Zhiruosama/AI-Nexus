@@ -1,5 +1,6 @@
 server:
   host: 0.0.0.0
+  public: 8.154.30.80
   port: 9000
 
 mysql:

@@ -318,16 +318,6 @@ func (c *Controller) Img2Img(ctx *gin.Context) {
 		})
 	}
 
-	fmt.Println(dto)
-
-	if dto.InputImage == nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    http.StatusBadRequest,
-			"message": "input_image is required",
-		})
-		return
-	}
-
 	if dto.Prompt == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    http.StatusBadRequest,
@@ -347,8 +337,12 @@ func (c *Controller) Img2Img(ctx *gin.Context) {
 		dto.NegativePrompt = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
 	}
 
-	if dto.Strength == 0 {
-		dto.Strength = 0.8
+	if dto.ModelID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadRequest,
+			"message": "model_id is required",
+		})
+		return
 	}
 
 	if dto.Width == 0 {
@@ -369,6 +363,26 @@ func (c *Controller) Img2Img(ctx *gin.Context) {
 
 	if dto.Seed == 0 {
 		dto.Seed = rand.Int64N(2147483649) - 1
+	}
+
+	if dto.InputImage == nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadRequest,
+			"message": "input_image is required",
+		})
+		return
+	}
+
+	if dto.Strength == 0 {
+		dto.Strength = 0.8
+	}
+
+	if dto.Sha256 == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadRequest,
+			"message": "sha256 is required",
+		})
+		return
 	}
 
 	taskID, err := c.ImageGenerationService.Img2Img(ctx, &dto)

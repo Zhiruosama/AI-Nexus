@@ -17,7 +17,6 @@ import (
 	image_generation_do "github.com/Zhiruosama/ai_nexus/internal/domain/do/image-generation"
 	image_generation_dto "github.com/Zhiruosama/ai_nexus/internal/domain/dto/image-generation"
 	image_generation_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/image-generation"
-	"github.com/Zhiruosama/ai_nexus/internal/pkg"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/logger"
 	rabbitmq "github.com/Zhiruosama/ai_nexus/internal/pkg/queue"
 	"github.com/gin-gonic/gin"
@@ -243,7 +242,7 @@ func (s *Service) Text2Img(ctx *gin.Context, dto *image_generation_dto.Text2ImgD
 		Seed:              dto.Seed,
 	}
 
-	if err := s.ImageGenerationDAO.CreateTask(ctx, &do); err != nil {
+	if err := s.ImageGenerationDAO.CreateText2ImgTask(ctx, &do); err != nil {
 		return "", err
 	}
 
@@ -345,8 +344,8 @@ func (s *Service) Img2Img(ctx *gin.Context, dto *image_generation_dto.Img2ImgDTO
 		}
 		return "", err
 	}
+
 	calculatedHash := hex.EncodeToString(hash.Sum(nil))
-	fmt.Println(calculatedHash)
 	if calculatedHash != dto.Sha256 {
 		errs := os.Remove(dst)
 		if errs != nil {
@@ -355,19 +354,7 @@ func (s *Service) Img2Img(ctx *gin.Context, dto *image_generation_dto.Img2ImgDTO
 		return "", fmt.Errorf("the file destroyed")
 	}
 
-	if ext != ".webp" {
-		ok := pkg.ProcessImageToWebP(ctx, dst, 100)
-		if !ok {
-			errs := os.Remove(dst)
-			if errs != nil {
-				logger.Error(ctx, "Remove uploaded file error: %s", errs.Error())
-			}
-			return "", fmt.Errorf("failed to convert image to webp format")
-		}
-	}
-
-	// 拼接负载所需URL 从http://服务ip及端口/static/images/文件名
-	inputImageURL := fmt.Sprintf("http://%s/static/images/%s", configs.GlobalConfig.Server.SerialString(), filename)
+	inputImageURL := fmt.Sprintf("http://%s/static/images/%s", configs.GlobalConfig.Server.SerialStringPublic(), filename)
 
 	do := image_generation_do.TableImageGenerationTaskDO{
 		TaskID:            taskID,
@@ -382,9 +369,11 @@ func (s *Service) Img2Img(ctx *gin.Context, dto *image_generation_dto.Img2ImgDTO
 		NumInferenceSteps: dto.NumInferenceSteps,
 		GuidanceScale:     dto.GuidanceScale,
 		Seed:              dto.Seed,
+		InputImageURL:     inputImageURL,
+		Strength:          dto.Strength,
 	}
 
-	if err := s.ImageGenerationDAO.CreateTask(ctx, &do); err != nil {
+	if err := s.ImageGenerationDAO.CreateImg2ImgTask(ctx, &do); err != nil {
 		return "", err
 	}
 

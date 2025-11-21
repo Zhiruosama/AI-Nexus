@@ -133,13 +133,26 @@ func GetInfoFromModel[T any](_ *DAO, key, modelID string) (T, error) {
 	return val, nil
 }
 
-// CreateTask 创建新任务
-func (d *DAO) CreateTask(ctx *gin.Context, do *image_generation_do.TableImageGenerationTaskDO) error {
+// CreateText2ImgTask 创建文生图任务
+func (d *DAO) CreateText2ImgTask(ctx *gin.Context, do *image_generation_do.TableImageGenerationTaskDO) error {
 	sql := `INSERT INTO image_generation_tasks (task_id, user_uuid, task_type, status, prompt, negative_prompt, model_id, width, height, num_inference_steps, guidance_scale, seed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	result := db.GlobalDB.Exec(sql, do.TaskID, do.UserUUID, do.TaskType, do.Status, do.Prompt, do.NegativePrompt, do.ModelID, do.Width, do.Height, do.NumInferenceSteps, do.GuidanceScale, do.Seed)
 
 	if result.Error != nil {
-		logger.Error(ctx, "Create task error: %s", result.Error.Error())
+		logger.Error(ctx, "Create text2img task error: %s", result.Error.Error())
+		return result.Error
+	}
+
+	return nil
+}
+
+// CreateImg2ImgTask 创建图生图任务
+func (d *DAO) CreateImg2ImgTask(ctx *gin.Context, do *image_generation_do.TableImageGenerationTaskDO) error {
+	sql := `INSERT INTO image_generation_tasks (task_id, user_uuid, task_type, status, prompt, negative_prompt, model_id, width, height, num_inference_steps, guidance_scale, seed, input_image_url, strength) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	result := db.GlobalDB.Exec(sql, do.TaskID, do.UserUUID, do.TaskType, do.Status, do.Prompt, do.NegativePrompt, do.ModelID, do.Width, do.Height, do.NumInferenceSteps, do.GuidanceScale, do.Seed, do.InputImageURL, do.Strength)
+
+	if result.Error != nil {
+		logger.Error(ctx, "Create img2img task error: %s", result.Error.Error())
 		return result.Error
 	}
 
@@ -186,6 +199,31 @@ func GetTaskInfo[T any](_ *DAO, key, taskID string) (T, error) {
 	}
 
 	return val, nil
+}
+
+// CheckDeadLetterExists 判断是否存在死信任务
+func (d *DAO) CheckDeadLetterExists(taskID string) (bool, error) {
+	var count int64
+	sql := `SELECT COUNT(*) FROM dead_letter_tasks WHERE task_id = ?`
+	result := db.GlobalDB.Raw(sql, taskID).Scan(&count)
+
+	if result.Error != nil {
+		log.Printf("GetDeadLetterByID error: %s", result.Error.Error())
+		return false, result.Error
+	}
+	return count > 0, nil
+}
+
+// InsertDeadLetterTask 插入死信任务
+func (d *DAO) InsertDeadLetterTask(do *image_generation_do.TableDeadLetterTasksDO) error {
+	sql := `INSERT INTO dead_letter_tasks (user_id, task_id, task_type, dead_reason, original_status) VALUES (?, ?, ?, ?, ?)`
+	result := db.GlobalDB.Exec(sql, do.UserID, do.TaskID, do.TaskType, do.DeadReason, do.OriginalStatus)
+
+	if result.Error != nil {
+		log.Printf("CreateModel error: %s", result.Error.Error())
+		return result.Error
+	}
+	return nil
 }
 
 // buildQueryCondition 构建查询条件

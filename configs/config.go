@@ -27,8 +27,9 @@ type Config struct {
 
 // ServerConfig 定义主服务配置
 type ServerConfig struct {
-	Host string `yaml:"host"`
-	Port int    `yaml:"port"`
+	Host   string `yaml:"host"`
+	Public string `yaml:"public"`
+	Port   int    `yaml:"port"`
 }
 
 // MysqlConfig 定义 Mysql 相关配置
@@ -81,6 +82,11 @@ type RabbitMQConfig struct {
 // SerialString 返回服务信息的序列化字符串
 func (sc ServerConfig) SerialString() string {
 	return fmt.Sprintf("%s:%d", sc.Host, sc.Port)
+}
+
+// SerialStringPublic 返回公网服务信息的序列化字符串
+func (sc ServerConfig) SerialStringPublic() string {
+	return fmt.Sprintf("%s:%d", sc.Public, sc.Port)
 }
 
 // DsnString 返回 DSN 信息的序列化字符串

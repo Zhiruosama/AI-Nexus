@@ -1,4 +1,5 @@
 @token = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFjMjEwNzItNDdjNi00NTNmLWExMjItZDJiNGRiZjRjMjE2IiwiaXNzIjoiYWktbmV4dXMtYXV0aCIsImV4cCI6MTc2NDIxMzk4MCwiaWF0IjoxNzYzNjA5MTgwfQ.uN8u39JJdhVDgrn3ogPyKFCvUq-5gkbidTQdg4S_jls
+
 ### 生图模块
 ### 文生图: seed 参数为可选
 POST http://127.0.0.1:9000/image-generation/image/text2img

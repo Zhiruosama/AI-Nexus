@@ -130,3 +130,16 @@ CREATE TABLE IF NOT EXISTS `image_generation_models` (
   KEY `idx_tags` (`tags`),
   KEY `idx_is_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='生图模型配置表';
+
+CREATE TABLE dead_letter_tasks (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  user_id VARCHAR(64) NOT NULL COMMENT '用户UUID',
+  task_id VARCHAR(64) NOT NULL UNIQUE COMMENT '任务ID',
+  task_type TINYINT NOT NULL COMMENT '任务类型 1:text2img 2:img2img',
+  dead_reason TEXT COMMENT '死信原因',
+  original_status TINYINT COMMENT '进入死信时的原始状态',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '死信记录时间',
+
+  INDEX idx_user_id (user_id),
+  INDEX idx_created_at (created_at)
+) COMMENT='死信任务记录表';

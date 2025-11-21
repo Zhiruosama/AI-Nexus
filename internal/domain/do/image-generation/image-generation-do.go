@@ -84,3 +84,14 @@ type TableImageGenerationModelsDO struct {
 	CreatedAt string `gorm:"column:created_at" json:"created_at"`
 	UpdatedAt string `gorm:"column:updated_at" json:"updated_at"`
 }
+
+// TableDeadLetterTasksDO 对应 dead_letter_tasks 表中的 DO 结构
+type TableDeadLetterTasksDO struct {
+	ID             int64  `gorm:"column:id" json:"id"`
+	UserID         string `gorm:"column:user_id" json:"user_id"`
+	TaskID         string `gorm:"column:task_id" json:"task_id"`
+	TaskType       int8   `gorm:"column:task_type" json:"task_type"`
+	DeadReason     string `gorm:"column:dead_reason" json:"dead_reason"`
+	OriginalStatus int8   `gorm:"column:original_status" json:"original_status"`
+	CreatedAt      string `gorm:"column:created_at" json:"created_at"`
+}

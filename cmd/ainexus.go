@@ -2,7 +2,9 @@
 package main
 
 import (
-	"fmt"
+	"context"
+	"log"
+	"time"
 
 	_ "github.com/Zhiruosama/ai_nexus/configs"
 	app "github.com/Zhiruosama/ai_nexus/internal"
@@ -17,12 +19,16 @@ func main() {
 	rabbitmq.GlobalMQ.Close()
 	websocket.GlobalHub.Close()
 
-	for !rabbitmq.GlobalMQ.IsConnected() {
-		fmt.Print("")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := rabbitmq.GlobalMQ.WaitForConnection(ctx); err != nil {
+		log.Fatalf("[Main] Failed to wait for RabbitMQ connection: %v\n", err)
 	}
 
 	app.StartWorker(3, app.StartText2ImgWorker)
 	app.StartWorker(2, app.StartImg2ImgWorker)
+	app.StartWorker(2, app.StartDeadLetterWorker)
 
 	app.Run()
 }
