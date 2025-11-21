@@ -324,12 +324,12 @@ func handleDeadLetterTask(msg *queue.TaskMessage, xDeathInfo map[string]any) err
 
 	// 解析死信原因
 	deadReason := parseDeadLetterReason(xDeathInfo, status)
-	xDeathInfoJson, err := json.Marshal(xDeathInfo)
+	xDeathInfoJSON, err := json.Marshal(xDeathInfo)
 	if err != nil {
 		log.Printf("[Worker] Failed to marshal x-death info for task %s: %v\n", msg.TaskID, err)
-		xDeathInfoJson = []byte("{}")
+		xDeathInfoJSON = []byte("{}")
 	}
-	xDeathInfoStr := string(xDeathInfoJson)
+	xDeathInfoStr := string(xDeathInfoJSON)
 
 	log.Printf("[Worker] Dead letter reason for task %s: %s\n", msg.TaskID, xDeathInfoStr)
 

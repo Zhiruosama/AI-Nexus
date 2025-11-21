@@ -12,6 +12,8 @@ import (
 
 // MessageHandler 消息处理函数类型
 type MessageHandler func(*TaskMessage) (bool, int8, int8, error)
+
+// DeadLetterHandler 死信消息处理函数类型
 type DeadLetterHandler func(*TaskMessage, map[string]any) error
 
 var dao = image_generation_dao.DAO{}
