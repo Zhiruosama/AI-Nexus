@@ -118,11 +118,11 @@ func (d *DAO) QueryModels(ctx *gin.Context, query *image_generation_query.Models
 }
 
 // GetInfoFromModel 获取模型信息
-func GetInfoFromModel[T any](_ *DAO, key, modelId string) (T, error) {
+func GetInfoFromModel[T any](_ *DAO, key, modelID string) (T, error) {
 	sql := "SELECT " + key + " FROM image_generation_models WHERE model_id = ?"
 
 	var val T
-	result := db.GlobalDB.Raw(sql, modelId).Scan(&val)
+	result := db.GlobalDB.Raw(sql, modelID).Scan(&val)
 
 	if result.Error != nil {
 		log.Printf("GetInfoFromModel error: %s\n", result.Error.Error())
