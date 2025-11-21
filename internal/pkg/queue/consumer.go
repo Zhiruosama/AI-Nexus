@@ -22,7 +22,7 @@ func Consume(queueName string, handler MessageHandler) error {
 		return err
 	}
 	defer func() {
-		if err := ch.Close(); err != nil {
+		if err = ch.Close(); err != nil {
 			log.Printf("[RabbitMQ] Failed to close channel: %v\n", err)
 		}
 	}()

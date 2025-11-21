@@ -19,7 +19,7 @@ func Publish(ctx context.Context, taskType int, message *TaskMessage) error {
 	}
 
 	// 启用发布确认模式
-	if err := ch.Confirm(false); err != nil {
+	if err = ch.Confirm(false); err != nil {
 		return err
 	}
 

@@ -1,5 +1,4 @@
-@token = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFjMjEwNzItNDdjNi00NTNmLWExMjItZDJiNGRiZjRjMjE2IiwiaXNzIjoiYWktbmV4dXMtYXV0aCIsImV4cCI6MTc2MzkwOTAxOCwiaWF0IjoxNzYzMzA0MjE4fQ.KW28eZqSpwHB8JSi3LCgoAkGB1JCPVhm3_Dtu9IhTIY
-
+@token = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFjMjEwNzItNDdjNi00NTNmLWExMjItZDJiNGRiZjRjMjE2IiwiaXNzIjoiYWktbmV4dXMtYXV0aCIsImV4cCI6MTc2NDIxMzk4MCwiaWF0IjoxNzYzNjA5MTgwfQ.uN8u39JJdhVDgrn3ogPyKFCvUq-5gkbidTQdg4S_jls
 ### 生图模块
 ### 文生图: seed 参数为可选
 POST http://127.0.0.1:9000/image-generation/image/text2img
@@ -16,3 +15,51 @@ Content-Type: application/json
   "guidance_scale": 7.5,
   "seed": 0
 }
+
+### 图生图: 上传本地图片并创建任务
+POST http://127.0.0.1:9000/image-generation/image/img2img HTTP/1.1
+Authorization: {{token}}
+Content-Type: multipart/form-data; boundary=WebKitFormBoundary7MA4YWxkTrZu0gW
+
+--WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="prompt"
+
+将图中人物发色修改为黄色
+--WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="negative_prompt"
+
+lowres, bad anatomy, watermark
+--WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="model_id"
+
+flux.1-dev
+--WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="strength"
+
+0.8
+--WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="width"
+
+1024
+--WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="height"
+
+1024
+--WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="num_inference_steps"
+
+20
+--WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="guidance_scale"
+
+7.5
+--WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="sha256"
+
+8d9cea43b27fe88053835841468d9eb972b8078556e8a62a53fbb8e1a59b59b9
+--WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="input_image"; filename="default.png"
+Content-Type: image/png
+
+< ./static/avatar/default.png
+--WebKitFormBoundary7MA4YWxkTrZu0gW--

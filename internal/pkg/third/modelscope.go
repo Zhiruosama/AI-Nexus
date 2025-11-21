@@ -1,3 +1,4 @@
+// Package third 提供 ModelScope 第三方 API 调用
 package third
 
 import (
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Zhiruosama/ai_nexus/internal/pkg/logger"
 	rabbitmq "github.com/Zhiruosama/ai_nexus/internal/pkg/queue"
 )
 
@@ -22,9 +24,23 @@ const (
 	TaskStatusProcessing = "PROCESSING"
 )
 
-// ModelScopeCreateRequest ModelScope 创建任务请求
-type ModelScopeCreateRequest struct {
+// ModelScopeCreateText2ImgRequest ModelScope 创建任务请求
+type ModelScopeCreateText2ImgRequest struct {
 	Model             string  `json:"model"`
+	Prompt            string  `json:"prompt"`
+	NegativePrompt    string  `json:"negative_prompt,omitempty"`
+	Width             int     `json:"width"`
+	Height            int     `json:"height"`
+	NumInferenceSteps int     `json:"num_inference_steps"`
+	GuidanceScale     float64 `json:"guidance_scale"`
+	Seed              int64   `json:"seed"`
+}
+
+// ModelScopeCreateImg2ImgRequest ModelScope 创建任务请求
+type ModelScopeCreateImg2ImgRequest struct {
+	Model             string  `json:"model"`
+	InputImageURL     string  `json:"input_image_url"`
+	Strength          float64 `json:"strength"`
 	Prompt            string  `json:"prompt"`
 	NegativePrompt    string  `json:"negative_prompt,omitempty"`
 	Width             int     `json:"width"`
@@ -69,9 +85,9 @@ func NewModelScopeClient(baseURL, apiKey string) *ModelScopeClient {
 	}
 }
 
-// CreateTask 创建图像生成任务
-func (c *ModelScopeClient) CreateTask(thirdPartyModelID string, payload rabbitmq.Text2ImgPayload) (string, error) {
-	reqPayload := ModelScopeCreateRequest{
+// CreateText2ImgTask 创建图像生成任务
+func (c *ModelScopeClient) CreateText2ImgTask(thirdPartyModelID string, payload rabbitmq.Text2ImgPayload) (string, error) {
+	reqPayload := ModelScopeCreateText2ImgRequest{
 		Model:             thirdPartyModelID,
 		Prompt:            payload.Prompt,
 		NegativePrompt:    payload.NegativePrompt,
@@ -100,7 +116,69 @@ func (c *ModelScopeClient) CreateTask(thirdPartyModelID string, payload rabbitmq
 	if err != nil {
 		return "", fmt.Errorf("send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		errs := resp.Body.Close()
+		if errs != nil {
+			logger.Error(nil, "Close response body error: %s", errs.Error())
+		}
+	}()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("task submit failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var createResp ModelScopeCreateResponse
+	if err := json.Unmarshal(body, &createResp); err != nil {
+		return "", fmt.Errorf("unmarshal create response: %w", err)
+	}
+
+	return createResp.TaskID, nil
+}
+
+// CreateImg2ImgTask 创建图像生成任务
+func (c *ModelScopeClient) CreateImg2ImgTask(thirdPartyModelID string, payload rabbitmq.Img2ImgPayload) (string, error) {
+	reqPayload := ModelScopeCreateImg2ImgRequest{
+		Model:             thirdPartyModelID,
+		InputImageURL:     payload.InputImageURL,
+		Strength:          payload.Strength,
+		Prompt:            payload.Prompt,
+		NegativePrompt:    payload.NegativePrompt,
+		Width:             payload.Width,
+		Height:            payload.Height,
+		NumInferenceSteps: payload.NumInferenceSteps,
+		GuidanceScale:     payload.GuidanceScale,
+		Seed:              payload.Seed,
+	}
+
+	reqBody, err := json.Marshal(reqPayload)
+	if err != nil {
+		return "", fmt.Errorf("marshal request payload: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", c.baseURL+"v1/images/generations", bytes.NewBuffer(reqBody))
+	if err != nil {
+		return "", fmt.Errorf("create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-ModelScope-Async-Mode", "true")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("send request: %w", err)
+	}
+	defer func() {
+		errs := resp.Body.Close()
+		if errs != nil {
+			logger.Error(nil, "Close response body error: %s", errs.Error())
+		}
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -165,7 +243,12 @@ func (c *ModelScopeClient) GetTaskStatus(taskID string) (*ModelScopeTaskResponse
 	if err != nil {
 		return nil, fmt.Errorf("send status request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		errs := resp.Body.Close()
+		if errs != nil {
+			logger.Error(nil, "Close response body error: %s", errs.Error())
+		}
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -182,23 +265,4 @@ func (c *ModelScopeClient) GetTaskStatus(taskID string) (*ModelScopeTaskResponse
 	}
 
 	return &taskResp, nil
-}
-
-// CallThirdAPI 调用第三方 API 进行图片生成
-func CallThirdAPI(baseURL, apiKey, thirdPartyModelID string, payload rabbitmq.Text2ImgPayload) (string, float64, error) {
-	client := NewModelScopeClient(baseURL, apiKey)
-
-	// 创建任务
-	taskID, err := client.CreateTask(thirdPartyModelID, payload)
-	if err != nil {
-		return "", 0, fmt.Errorf("create task: %w", err)
-	}
-
-	// 轮询任务状态
-	taskResp, err := client.WaitForTaskCompletion(taskID, 60, 5*time.Second)
-	if err != nil {
-		return "", 0, fmt.Errorf("wait for task completion: %w", err)
-	}
-
-	return taskResp.OutputImages[0], taskResp.TimeTaken, nil
 }

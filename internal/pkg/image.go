@@ -95,7 +95,10 @@ func DownloadAndSaveImages(imgURL string, quality int) (string, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
+		errs := resp.Body.Close()
+		if errs != nil {
+			logger.Error(nil, "Close response body error: %s", errs.Error())
+		}
 		return "", fmt.Errorf("download image failed with status: %d", resp.StatusCode)
 	}
 
@@ -115,30 +118,54 @@ func DownloadAndSaveImages(imgURL string, quality int) (string, error) {
 	// 保存临时图片
 	tempFile, err := os.Create(tempFilePath)
 	if err != nil {
-		resp.Body.Close()
+		errs := resp.Body.Close()
+		if errs != nil {
+			logger.Error(nil, "Close response body error: %s", errs.Error())
+		}
 		return "", fmt.Errorf("create temp file error: %w", err)
 	}
 
 	_, err = io.Copy(tempFile, resp.Body)
-	resp.Body.Close()
-	tempFile.Close()
+	errs := resp.Body.Close()
+	if errs != nil {
+		logger.Error(nil, "Close response body error: %s", errs.Error())
+	}
+	errs = tempFile.Close()
+	if errs != nil {
+		logger.Error(nil, "Close temp file error: %s", errs.Error())
+		return "", fmt.Errorf("close temp file error: %w", err)
+	}
 
 	if err != nil {
-		os.Remove(tempFilePath)
+		errs = os.Remove(tempFilePath)
+		if errs != nil {
+			logger.Error(nil, "Remove temp file error: %s", errs.Error())
+		}
 		return "", fmt.Errorf("save image to temp file error: %w", err)
 	}
 
 	// 转换为WebP
 	file, err := os.Open(tempFilePath)
 	if err != nil {
-		os.Remove(tempFilePath)
+		errs = os.Remove(tempFilePath)
+		if errs != nil {
+			logger.Error(nil, "Remove temp file error: %s", errs.Error())
+		}
 		return "", fmt.Errorf("open temp file error: %w", err)
 	}
 
 	img, _, err := image.Decode(file)
-	file.Close()
+	errs = file.Close()
+	if errs != nil {
+		logger.Error(nil, "Close temp file error: %s", errs.Error())
+		return "", fmt.Errorf("close temp file error: %w", err)
+	}
+
 	if err != nil {
-		os.Remove(tempFilePath)
+		errs = os.Remove(tempFilePath)
+		if errs != nil {
+			logger.Error(nil, "Remove temp file error: %s", errs.Error())
+		}
 		return "", fmt.Errorf("decode image error: %w", err)
 	}
 
@@ -146,7 +173,10 @@ func DownloadAndSaveImages(imgURL string, quality int) (string, error) {
 	webpPath := strings.TrimSuffix(tempFilePath, filepath.Ext(tempFilePath)) + ".webp"
 	outFile, err := os.Create(webpPath)
 	if err != nil {
-		os.Remove(tempFilePath)
+		errs = os.Remove(tempFilePath)
+		if errs != nil {
+			logger.Error(nil, "Remove temp file error: %s", errs.Error())
+		}
 		return "", fmt.Errorf("create webp file error: %w", err)
 	}
 
@@ -158,16 +188,29 @@ func DownloadAndSaveImages(imgURL string, quality int) (string, error) {
 		Lossless: false,
 		Quality:  float32(quality),
 	})
-	outFile.Close()
+	errs = outFile.Close()
+	if errs != nil {
+		logger.Error(nil, "Close output file error: %s", errs.Error())
+		return "", fmt.Errorf("close output file error: %w", err)
+	}
 
 	if err != nil {
-		os.Remove(tempFilePath)
-		os.Remove(webpPath)
+		errs := os.Remove(tempFilePath)
+		if errs != nil {
+			logger.Error(nil, "Remove temp file error: %s", errs.Error())
+		}
+		errs = os.Remove(webpPath)
+		if errs != nil {
+			logger.Error(nil, "Remove webp file error: %s", errs.Error())
+		}
 		return "", fmt.Errorf("encode webp error: %w", err)
 	}
 
 	// 删除原始临时文件
-	os.Remove(tempFilePath)
+	err = os.Remove(tempFilePath)
+	if err != nil {
+		logger.Error(nil, "Remove temp file error: %s", err.Error())
+	}
 
 	outputPath = webpPath
 

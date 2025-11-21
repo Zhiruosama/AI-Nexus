@@ -2,6 +2,8 @@
 package main
 
 import (
+	"fmt"
+
 	_ "github.com/Zhiruosama/ai_nexus/configs"
 	app "github.com/Zhiruosama/ai_nexus/internal"
 	_ "github.com/Zhiruosama/ai_nexus/internal/grpc"
@@ -12,10 +14,11 @@ import (
 )
 
 func main() {
-	defer rabbitmq.GlobalMQ.Close()
-	defer websocket.GlobalHub.Close()
+	rabbitmq.GlobalMQ.Close()
+	websocket.GlobalHub.Close()
 
 	for !rabbitmq.GlobalMQ.IsConnected() {
+		fmt.Print("")
 	}
 
 	app.StartWorker(3, app.StartText2ImgWorker)

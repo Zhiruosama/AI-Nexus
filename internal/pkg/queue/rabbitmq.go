@@ -151,7 +151,7 @@ func (c *RabbitMQClient) connect() error {
 
 	ch, err := conn.Channel()
 	if err != nil {
-		if err := conn.Close(); err != nil {
+		if err = conn.Close(); err != nil {
 			log.Printf("[RabbitMQ] Failed to close connection: %v\n", err)
 		}
 		return err

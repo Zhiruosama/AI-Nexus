@@ -307,6 +307,89 @@ func (c *Controller) Text2Img(ctx *gin.Context) {
 	})
 }
 
+// Img2Img 图生图
+func (c *Controller) Img2Img(ctx *gin.Context) {
+	dto := image_generation_dto.Img2ImgDTO{}
+
+	if err := ctx.ShouldBind(&dto); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadRequest,
+			"message": "The input data does not meet the requirements.",
+		})
+	}
+
+	fmt.Println(dto)
+
+	if dto.InputImage == nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadRequest,
+			"message": "input_image is required",
+		})
+		return
+	}
+
+	if dto.Prompt == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadRequest,
+			"message": "prompt is required",
+		})
+		return
+	}
+	if err := pkg.ValidatePrompt(dto.Prompt); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	if dto.NegativePrompt == "" {
+		dto.NegativePrompt = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
+	}
+
+	if dto.Strength == 0 {
+		dto.Strength = 0.8
+	}
+
+	if dto.Width == 0 {
+		dto.Width = 760
+	}
+
+	if dto.Height == 0 {
+		dto.Height = 1280
+	}
+
+	if dto.NumInferenceSteps == 0 {
+		dto.NumInferenceSteps = 20
+	}
+
+	if dto.GuidanceScale == 0 {
+		dto.GuidanceScale = 7.5
+	}
+
+	if dto.Seed == 0 {
+		dto.Seed = rand.Int64N(2147483649) - 1
+	}
+
+	taskID, err := c.ImageGenerationService.Img2Img(ctx, &dto)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"code":    http.StatusInternalServerError,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "img2img create task success",
+		"data": gin.H{
+			"task_id": taskID,
+			"status":  "queued",
+		},
+	})
+}
+
 // validateModelCreateRequest 校验创建模型请求参数
 func validateModelCreateRequest(req *image_generation_dto.ModelCreateDTO) error {
 	// 参数校验
