@@ -16,8 +16,8 @@ import (
 )
 
 func main() {
-	rabbitmq.GlobalMQ.Close()
-	websocket.GlobalHub.Close()
+	defer rabbitmq.GlobalMQ.Close()
+	defer websocket.GlobalHub.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
