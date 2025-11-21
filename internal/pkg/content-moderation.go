@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/Zhiruosama/ai_nexus/internal/pkg/logger"
 )
 
 // DFANode DFA字典树节点
@@ -51,7 +53,12 @@ func (cm *ContentModerator) loadFromFile(filepath string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		errs := file.Close()
+		if errs != nil {
+			logger.Error(nil, "Close file error: %s", errs.Error())
+		}
+	}()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -73,8 +80,7 @@ func (cm *ContentModerator) addWord(word string) {
 	}
 
 	node := cm.root
-	runes := []rune(word)
-	for _, r := range runes {
+	for _, r := range word {
 		if node.children[r] == nil {
 			node.children[r] = &DFANode{
 				children: make(map[rune]*DFANode),
