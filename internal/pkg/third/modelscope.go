@@ -1,3 +1,4 @@
+// Package third 提供 ModelScope 第三方 API 调用
 package third
 
 import (
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Zhiruosama/ai_nexus/internal/pkg/logger"
 	rabbitmq "github.com/Zhiruosama/ai_nexus/internal/pkg/queue"
 )
 
@@ -114,7 +116,12 @@ func (c *ModelScopeClient) CreateText2ImgTask(thirdPartyModelID string, payload 
 	if err != nil {
 		return "", fmt.Errorf("send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		errs := resp.Body.Close()
+		if errs != nil {
+			logger.Error(nil, "Close response body error: %s", errs.Error())
+		}
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -166,7 +173,12 @@ func (c *ModelScopeClient) CreateImg2ImgTask(thirdPartyModelID string, payload r
 	if err != nil {
 		return "", fmt.Errorf("send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		errs := resp.Body.Close()
+		if errs != nil {
+			logger.Error(nil, "Close response body error: %s", errs.Error())
+		}
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -231,7 +243,12 @@ func (c *ModelScopeClient) GetTaskStatus(taskID string) (*ModelScopeTaskResponse
 	if err != nil {
 		return nil, fmt.Errorf("send status request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		errs := resp.Body.Close()
+		if errs != nil {
+			logger.Error(nil, "Close response body error: %s", errs.Error())
+		}
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

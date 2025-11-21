@@ -118,14 +118,14 @@ func (d *DAO) QueryModels(ctx *gin.Context, query *image_generation_query.Models
 }
 
 // GetInfoFromModel 获取模型信息
-func GetInfoFromModel[T any](d *DAO, key, modelId string) (T, error) {
+func GetInfoFromModel[T any](_ *DAO, key, modelId string) (T, error) {
 	sql := "SELECT " + key + " FROM image_generation_models WHERE model_id = ?"
 
 	var val T
 	result := db.GlobalDB.Raw(sql, modelId).Scan(&val)
 
 	if result.Error != nil {
-		log.Fatalf("GetInfoFromModel error: %s\n", result.Error.Error())
+		log.Printf("GetInfoFromModel error: %s\n", result.Error.Error())
 		var zero T
 		return zero, result.Error
 	}
@@ -147,9 +147,9 @@ func (d *DAO) CreateTask(ctx *gin.Context, do *image_generation_do.TableImageGen
 }
 
 // DeleteTask 删除任务
-func (d *DAO) DeleteTask(ctx *gin.Context, taskId string) error {
+func (d *DAO) DeleteTask(ctx *gin.Context, taskID string) error {
 	sql := "DELETE FROM image_generation_tasks WHERE task_id = ?"
-	result := db.GlobalDB.Exec(sql, taskId)
+	result := db.GlobalDB.Exec(sql, taskID)
 
 	if result.Error != nil {
 		logger.Error(ctx, "DeleteTask error: %s", result.Error.Error())
@@ -173,14 +173,14 @@ func (d *DAO) UpdateTaskParams(key string, val any, taskID string) error {
 }
 
 // GetTaskInfo 获取任务信息
-func GetTaskInfo[T any](d *DAO, key, taskId string) (T, error) {
+func GetTaskInfo[T any](_ *DAO, key, taskID string) (T, error) {
 	sql := "SELECT " + key + " FROM image_generation_tasks WHERE task_id = ?"
 
 	var val T
-	result := db.GlobalDB.Raw(sql, taskId).Scan(&val)
+	result := db.GlobalDB.Raw(sql, taskID).Scan(&val)
 
 	if result.Error != nil {
-		log.Fatalf("GetTaskInfo error: %s\n", result.Error.Error())
+		log.Printf("GetTaskInfo error: %s\n", result.Error.Error())
 		var zero T
 		return zero, result.Error
 	}

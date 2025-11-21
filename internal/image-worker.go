@@ -97,20 +97,20 @@ func handleText2ImgTask(msg *queue.TaskMessage) (bool, int8, int8, error) {
 	})
 
 	// 调用 第三方API 进行生图
-	baseUrl, err := image_generation_dao.GetInfoFromModel[string](dao, "base_url", payload.ModelID)
+	baseURL, err := image_generation_dao.GetInfoFromModel[string](dao, "base_url", payload.ModelID)
 	if err != nil {
 		return true, retryCount, maxRetries, err
 	}
 
-	thirdPartyModelId, err := image_generation_dao.GetInfoFromModel[string](dao, "third_party_model_id", payload.ModelID)
+	thirdPartyModelID, err := image_generation_dao.GetInfoFromModel[string](dao, "third_party_model_id", payload.ModelID)
 	if err != nil {
 		return true, retryCount, maxRetries, err
 	}
 
 	apiKey := os.Getenv("MODELSCOPE_API_KEY")
-	client := third.NewModelScopeClient(baseUrl, apiKey)
+	client := third.NewModelScopeClient(baseURL, apiKey)
 
-	taskID, err := client.CreateText2ImgTask(thirdPartyModelId, payload)
+	taskID, err := client.CreateText2ImgTask(thirdPartyModelID, payload)
 	if err != nil {
 		return true, retryCount, maxRetries, err
 	}
@@ -216,13 +216,13 @@ func handleImg2ImgTask(msg *queue.TaskMessage) (bool, int8, int8, error) {
 		Status: "processing",
 	})
 
-	baseUrl, err := image_generation_dao.GetInfoFromModel[string](dao, "base_url", payload.ModelID)
+	baseURL, err := image_generation_dao.GetInfoFromModel[string](dao, "base_url", payload.ModelID)
 	if err != nil {
 		fmt.Println("5")
 		return true, retryCount, maxRetries, err
 	}
 
-	thirdPartyModelId, err := image_generation_dao.GetInfoFromModel[string](dao, "third_party_model_id", payload.ModelID)
+	thirdPartyModelID, err := image_generation_dao.GetInfoFromModel[string](dao, "third_party_model_id", payload.ModelID)
 	if err != nil {
 		fmt.Println("6")
 		return true, retryCount, maxRetries, err
@@ -230,9 +230,9 @@ func handleImg2ImgTask(msg *queue.TaskMessage) (bool, int8, int8, error) {
 	// 4. 读取输入图片
 	// 5. 调用 ModelScope Img2Img API
 	apiKey := os.Getenv("MODELSCOPE_API_KEY")
-	client := third.NewModelScopeClient(baseUrl, apiKey)
+	client := third.NewModelScopeClient(baseURL, apiKey)
 
-	taskID, err := client.CreateImg2ImgTask(thirdPartyModelId, payload)
+	taskID, err := client.CreateImg2ImgTask(thirdPartyModelID, payload)
 	if err != nil {
 		fmt.Println("7")
 		return true, retryCount, maxRetries, err

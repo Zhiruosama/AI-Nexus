@@ -225,11 +225,11 @@ func (s *Service) Text2Img(ctx *gin.Context, dto *image_generation_dto.Text2ImgD
 		return "", fmt.Errorf("model_id '%s' does not exist", dto.ModelID)
 	}
 
-	taskId := uuid.New().String()
+	taskID := uuid.New().String()
 	uuid, _ := ctx.Get("user_id")
 
 	do := image_generation_do.TableImageGenerationTaskDO{
-		TaskID:            taskId,
+		TaskID:            taskID,
 		UserUUID:          uuid.(string),
 		TaskType:          1,
 		Status:            0,
@@ -248,7 +248,7 @@ func (s *Service) Text2Img(ctx *gin.Context, dto *image_generation_dto.Text2ImgD
 	}
 
 	message := rabbitmq.TaskMessage{
-		TaskID:   taskId,
+		TaskID:   taskID,
 		UserUUID: uuid.(string),
 		Payload: rabbitmq.Text2ImgPayload{
 			Prompt:            dto.Prompt,
@@ -268,7 +268,7 @@ func (s *Service) Text2Img(ctx *gin.Context, dto *image_generation_dto.Text2ImgD
 	if err := rabbitmq.Publish(c, 1, &message); err != nil {
 		logger.Error(ctx, "Publish to mq error(text2img): %s", err.Error())
 
-		errs := s.ImageGenerationDAO.DeleteTask(ctx, taskId)
+		errs := s.ImageGenerationDAO.DeleteTask(ctx, taskID)
 		if errs != nil {
 			logger.Error(ctx, "DeleteTask error: %s", errs.Error())
 		}
@@ -278,15 +278,15 @@ func (s *Service) Text2Img(ctx *gin.Context, dto *image_generation_dto.Text2ImgD
 
 	now := time.Now()
 	mysqlDatetime := now.Format("2006-01-02 15:04:05")
-	if err := s.ImageGenerationDAO.UpdateTaskParams("queued_at", mysqlDatetime, taskId); err != nil {
+	if err := s.ImageGenerationDAO.UpdateTaskParams("queued_at", mysqlDatetime, taskID); err != nil {
 		return "", err
 	}
 
-	if err := s.ImageGenerationDAO.UpdateTaskParams("status", 1, taskId); err != nil {
+	if err := s.ImageGenerationDAO.UpdateTaskParams("status", 1, taskID); err != nil {
 		return "", err
 	}
 
-	return taskId, nil
+	return taskID, nil
 }
 
 // Img2Img 图生图
@@ -299,7 +299,7 @@ func (s *Service) Img2Img(ctx *gin.Context, dto *image_generation_dto.Img2ImgDTO
 		return "", fmt.Errorf("model_id '%s' does not exist", dto.ModelID)
 	}
 
-	taskId := uuid.New().String()
+	taskID := uuid.New().String()
 	uuid, _ := ctx.Get("user_id")
 
 	// 落盘
@@ -314,7 +314,7 @@ func (s *Service) Img2Img(ctx *gin.Context, dto *image_generation_dto.Img2ImgDTO
 		return "", err
 	}
 
-	filename := "img2img-" + taskId + ext
+	filename := "img2img-" + taskID + ext
 	dst := filepath.Join("static", "images", filename)
 
 	if err = ctx.SaveUploadedFile(dto.InputImage, dst); err != nil {
@@ -324,7 +324,10 @@ func (s *Service) Img2Img(ctx *gin.Context, dto *image_generation_dto.Img2ImgDTO
 	// 落盘后进行校验
 	file, err := os.Open(dst)
 	if err != nil {
-		os.Remove(dst)
+		errs := os.Remove(dst)
+		if errs != nil {
+			logger.Error(ctx, "Remove uploaded file error: %s", errs.Error())
+		}
 		return "", err
 	}
 	defer func() {
@@ -336,20 +339,29 @@ func (s *Service) Img2Img(ctx *gin.Context, dto *image_generation_dto.Img2ImgDTO
 	hash := sha256.New()
 	if _, err := io.Copy(hash, file); err != nil {
 		logger.Error(ctx, "calcute sha256 error: %s", err.Error())
-		os.Remove(dst)
+		errs := os.Remove(dst)
+		if errs != nil {
+			logger.Error(ctx, "Remove uploaded file error: %s", errs.Error())
+		}
 		return "", err
 	}
 	calculatedHash := hex.EncodeToString(hash.Sum(nil))
 	fmt.Println(calculatedHash)
 	if calculatedHash != dto.Sha256 {
-		os.Remove(dst)
+		errs := os.Remove(dst)
+		if errs != nil {
+			logger.Error(ctx, "Remove uploaded file error: %s", errs.Error())
+		}
 		return "", fmt.Errorf("the file destroyed")
 	}
 
 	if ext != ".webp" {
 		ok := pkg.ProcessImageToWebP(ctx, dst, 100)
 		if !ok {
-			os.Remove(dst)
+			errs := os.Remove(dst)
+			if errs != nil {
+				logger.Error(ctx, "Remove uploaded file error: %s", errs.Error())
+			}
 			return "", fmt.Errorf("failed to convert image to webp format")
 		}
 	}
@@ -358,7 +370,7 @@ func (s *Service) Img2Img(ctx *gin.Context, dto *image_generation_dto.Img2ImgDTO
 	inputImageURL := fmt.Sprintf("http://%s/static/images/%s", configs.GlobalConfig.Server.SerialString(), filename)
 
 	do := image_generation_do.TableImageGenerationTaskDO{
-		TaskID:            taskId,
+		TaskID:            taskID,
 		UserUUID:          uuid.(string),
 		TaskType:          2,
 		Status:            0,
@@ -377,7 +389,7 @@ func (s *Service) Img2Img(ctx *gin.Context, dto *image_generation_dto.Img2ImgDTO
 	}
 
 	message := rabbitmq.TaskMessage{
-		TaskID:   taskId,
+		TaskID:   taskID,
 		UserUUID: uuid.(string),
 		Payload: rabbitmq.Img2ImgPayload{
 			Prompt:            dto.Prompt,
@@ -399,7 +411,7 @@ func (s *Service) Img2Img(ctx *gin.Context, dto *image_generation_dto.Img2ImgDTO
 	if err := rabbitmq.Publish(c, 2, &message); err != nil {
 		logger.Error(ctx, "Publish to mq error(img2img): %s", err.Error())
 
-		errs := s.ImageGenerationDAO.DeleteTask(ctx, taskId)
+		errs := s.ImageGenerationDAO.DeleteTask(ctx, taskID)
 		if errs != nil {
 			logger.Error(ctx, "DeleteTask error: %s", errs.Error())
 		}
@@ -409,12 +421,12 @@ func (s *Service) Img2Img(ctx *gin.Context, dto *image_generation_dto.Img2ImgDTO
 
 	now := time.Now()
 	mysqlDatetime := now.Format("2006-01-02 15:04:05")
-	if err := s.ImageGenerationDAO.UpdateTaskParams("queued_at", mysqlDatetime, taskId); err != nil {
+	if err := s.ImageGenerationDAO.UpdateTaskParams("queued_at", mysqlDatetime, taskID); err != nil {
 		return "", err
 	}
-	if err := s.ImageGenerationDAO.UpdateTaskParams("status", 1, taskId); err != nil {
+	if err := s.ImageGenerationDAO.UpdateTaskParams("status", 1, taskID); err != nil {
 		return "", err
 	}
 
-	return taskId, nil
+	return taskID, nil
 }
