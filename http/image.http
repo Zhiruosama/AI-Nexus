@@ -24,7 +24,7 @@ Content-Type: multipart/form-data; boundary=WebKitFormBoundary7MA4YWxkTrZu0gW
 --WebKitFormBoundary7MA4YWxkTrZu0gW
 Content-Disposition: form-data; name="prompt"
 
-给图中的狗戴上一个生日帽
+将图中人物发色修改为黄色
 --WebKitFormBoundary7MA4YWxkTrZu0gW
 Content-Disposition: form-data; name="negative_prompt"
 
@@ -61,5 +61,5 @@ Content-Disposition: form-data; name="sha256"
 Content-Disposition: form-data; name="input_image"; filename="default.png"
 Content-Type: image/png
 
-< http://8.154.30.80:9000/static/avatar/default.png
+< ./static/avatar/default.png
 --WebKitFormBoundary7MA4YWxkTrZu0gW--

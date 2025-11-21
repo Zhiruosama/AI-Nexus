@@ -302,13 +302,29 @@ func (s *Service) Img2Img(ctx *gin.Context, dto *image_generation_dto.Img2ImgDTO
 	taskId := uuid.New().String()
 	uuid, _ := ctx.Get("user_id")
 
-	// 拿到图片 做sha256校验
-	file, err := dto.InputImage.Open()
+	// 落盘
+	ext := filepath.Ext(dto.InputImage.Filename)
+	allowedExts := []string{".png", ".jpg", ".jpeg", ".webp"}
+	isValid := slices.Contains(allowedExts, ext)
+	if !isValid {
+		return "", fmt.Errorf("unsupported file format: %s", ext)
+	}
 
-	fmt.Println(file)
+	if err = os.MkdirAll(filepath.Join("static", "images"), 0755); err != nil {
+		return "", err
+	}
 
+	filename := "img2img-" + taskId + ext
+	dst := filepath.Join("static", "images", filename)
+
+	if err = ctx.SaveUploadedFile(dto.InputImage, dst); err != nil {
+		return "", err
+	}
+
+	// 落盘后进行校验
+	file, err := os.Open(dst)
 	if err != nil {
-		logger.Error(ctx, "Open uploaded file error: %s", err.Error())
+		os.Remove(dst)
 		return "", err
 	}
 	defer func() {
@@ -318,35 +334,16 @@ func (s *Service) Img2Img(ctx *gin.Context, dto *image_generation_dto.Img2ImgDTO
 	}()
 
 	hash := sha256.New()
-	if _, err = io.Copy(hash, file); err != nil {
+	if _, err := io.Copy(hash, file); err != nil {
 		logger.Error(ctx, "calcute sha256 error: %s", err.Error())
+		os.Remove(dst)
 		return "", err
 	}
 	calculatedHash := hex.EncodeToString(hash.Sum(nil))
-
 	fmt.Println(calculatedHash)
-
 	if calculatedHash != dto.Sha256 {
+		os.Remove(dst)
 		return "", fmt.Errorf("the file destroyed")
-	}
-
-	//sha256校验通过 进行落盘
-	ext := filepath.Ext(dto.InputImage.Filename)
-	allowedExts := []string{".png", ".jpg", ".jpeg", ".webp"}
-	isValid := slices.Contains(allowedExts, ext)
-	if !isValid {
-		return "", fmt.Errorf("unsupported file format: %s", ext)
-	}
-
-	if err := os.MkdirAll(filepath.Join("static", "images"), 0755); err != nil {
-		return "", err
-	}
-
-	filename := "img2img-" + taskId + ext
-	dst := filepath.Join("static", "images", filename)
-
-	if err := ctx.SaveUploadedFile(dto.InputImage, dst); err != nil {
-		return "", err
 	}
 
 	if ext != ".webp" {
@@ -355,12 +352,10 @@ func (s *Service) Img2Img(ctx *gin.Context, dto *image_generation_dto.Img2ImgDTO
 			os.Remove(dst)
 			return "", fmt.Errorf("failed to convert image to webp format")
 		}
-		filename = "img2img-" + taskId + ".webp"
-		dst = filepath.Join("static", "images", filename)
 	}
 
 	// 拼接负载所需URL 从http://服务ip及端口/static/images/文件名
-	inputImageURL := fmt.Sprintf("http://%s/static/images/%s", configs.GlobalConfig.Server.SerialString(), dto.InputImage.Filename)
+	inputImageURL := fmt.Sprintf("http://%s/static/images/%s", configs.GlobalConfig.Server.SerialString(), filename)
 
 	do := image_generation_do.TableImageGenerationTaskDO{
 		TaskID:            taskId,
@@ -414,7 +409,7 @@ func (s *Service) Img2Img(ctx *gin.Context, dto *image_generation_dto.Img2ImgDTO
 
 	now := time.Now()
 	mysqlDatetime := now.Format("2006-01-02 15:04:05")
-	if err := s.ImageGenerationDAO.UpdateTaskParams("queue_at", mysqlDatetime, taskId); err != nil {
+	if err := s.ImageGenerationDAO.UpdateTaskParams("queued_at", mysqlDatetime, taskId); err != nil {
 		return "", err
 	}
 	if err := s.ImageGenerationDAO.UpdateTaskParams("status", 1, taskId); err != nil {

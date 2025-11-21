@@ -318,6 +318,8 @@ func (c *Controller) Img2Img(ctx *gin.Context) {
 		})
 	}
 
+	fmt.Println(dto)
+
 	if dto.InputImage == nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    http.StatusBadRequest,

@@ -12,7 +12,6 @@ import (
 	image_generation_dao "github.com/Zhiruosama/ai_nexus/internal/dao/image-generation"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/queue"
-	rabbitmq "github.com/Zhiruosama/ai_nexus/internal/pkg/queue"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/third"
 	ws "github.com/Zhiruosama/ai_nexus/internal/pkg/ws"
 )
@@ -51,12 +50,12 @@ func handleText2ImgTask(msg *queue.TaskMessage) (bool, int8, int8, error) {
 	dao := &image_generation_dao.DAO{}
 
 	// 转换 Payload 为具体类型
-	var payload rabbitmq.Text2ImgPayload
+	var payload queue.Text2ImgPayload
 	payloadBytes, err := json.Marshal(msg.Payload)
 	if err != nil {
 		return false, 0, 0, fmt.Errorf("marshal payload error: %w", err)
 	}
-	if err := json.Unmarshal(payloadBytes, &payload); err != nil {
+	if err = json.Unmarshal(payloadBytes, &payload); err != nil {
 		return false, 0, 0, fmt.Errorf("unmarshal payload error: %w", err)
 	}
 
@@ -83,11 +82,11 @@ func handleText2ImgTask(msg *queue.TaskMessage) (bool, int8, int8, error) {
 	}
 
 	// 更新状态为处理中
-	if err := dao.UpdateTaskParams("status", 2, msg.TaskID); err != nil {
+	if err = dao.UpdateTaskParams("status", 2, msg.TaskID); err != nil {
 		return true, retryCount, maxRetries, err
 	}
 
-	if err := dao.UpdateTaskParams("started_at", time.Now(), msg.TaskID); err != nil {
+	if err = dao.UpdateTaskParams("started_at", time.Now(), msg.TaskID); err != nil {
 		return true, retryCount, maxRetries, err
 	}
 
@@ -124,13 +123,13 @@ func handleText2ImgTask(msg *queue.TaskMessage) (bool, int8, int8, error) {
 	// 保存图片到本地
 	path, err := pkg.DownloadAndSaveImages(taskResp.OutputImages[0], 80)
 	if err != nil {
-		return true, retryCount, maxRetries, fmt.Errorf("DownloadAndSaveImages error: %s\n", err.Error())
+		return true, retryCount, maxRetries, fmt.Errorf("DownloadAndSaveImages error: %s", err.Error())
 	}
 
 	// 更新数据库
 	err = dao.UpdateTaskParams("status", 3, msg.TaskID)
 	if err != nil {
-		return true, retryCount, maxRetries, fmt.Errorf("UpdateTaskParams error: %s\n", err.Error())
+		return true, retryCount, maxRetries, fmt.Errorf("UpdateTaskParams error: %s", err.Error())
 	}
 
 	err = dao.UpdateTaskParams("output_image_url", "/"+path, msg.TaskID)
@@ -167,34 +166,36 @@ func handleText2ImgTask(msg *queue.TaskMessage) (bool, int8, int8, error) {
 
 // handleImg2ImgTask 处理图生图任务
 func handleImg2ImgTask(msg *queue.TaskMessage) (bool, int8, int8, error) {
-	log.Printf("[Worker] Processing img2img task: %s\n", msg.TaskID)
-
 	// TODO: 实现图生图处理逻辑（与文生图类似，但需要处理输入图片）
 	log.Printf("[Worker] Processing img2img task: %s\n", msg.TaskID)
 
 	dao := &image_generation_dao.DAO{}
 
-	var payload rabbitmq.Img2ImgPayload
+	var payload queue.Img2ImgPayload
 	payloadBytes, err := json.Marshal(msg.Payload)
 	if err != nil {
+		fmt.Println("1")
 		return false, 0, 0, fmt.Errorf("marshal payload error: %w", err)
 	}
-	if err := json.Unmarshal(payloadBytes, &payload); err != nil {
+	if err = json.Unmarshal(payloadBytes, &payload); err != nil {
 		return false, 0, 0, fmt.Errorf("unmarshal payload error: %w", err)
 	}
 	// 2. 检查任务状态和重试次数
 	maxRetries, err := image_generation_dao.GetTaskInfo[int8](dao, "max_retry", msg.TaskID)
 	if err != nil {
+		fmt.Println("2")
 		return false, 0, 0, err
 	}
 
 	retryCount, err := image_generation_dao.GetTaskInfo[int8](dao, "retry_count", msg.TaskID)
 	if err != nil {
+		fmt.Println("3")
 		return false, 0, 0, err
 	}
 
 	status, err := image_generation_dao.GetTaskInfo[int8](dao, "status", msg.TaskID)
 	if err != nil {
+		fmt.Println("4")
 		return true, retryCount, maxRetries, err
 	}
 
@@ -202,11 +203,11 @@ func handleImg2ImgTask(msg *queue.TaskMessage) (bool, int8, int8, error) {
 		return false, 0, 0, nil
 	}
 	// 3. 更新状态为"处理中"
-	if err := dao.UpdateTaskParams("status", 2, msg.TaskID); err != nil {
+	if err = dao.UpdateTaskParams("status", 2, msg.TaskID); err != nil {
 		return true, retryCount, maxRetries, err
 	}
 
-	if err := dao.UpdateTaskParams("started_at", time.Now(), msg.TaskID); err != nil {
+	if err = dao.UpdateTaskParams("started_at", time.Now(), msg.TaskID); err != nil {
 		return true, retryCount, maxRetries, err
 	}
 
@@ -217,11 +218,13 @@ func handleImg2ImgTask(msg *queue.TaskMessage) (bool, int8, int8, error) {
 
 	baseUrl, err := image_generation_dao.GetInfoFromModel[string](dao, "base_url", payload.ModelID)
 	if err != nil {
+		fmt.Println("5")
 		return true, retryCount, maxRetries, err
 	}
 
 	thirdPartyModelId, err := image_generation_dao.GetInfoFromModel[string](dao, "third_party_model_id", payload.ModelID)
 	if err != nil {
+		fmt.Println("6")
 		return true, retryCount, maxRetries, err
 	}
 	// 4. 读取输入图片
@@ -231,42 +234,50 @@ func handleImg2ImgTask(msg *queue.TaskMessage) (bool, int8, int8, error) {
 
 	taskID, err := client.CreateImg2ImgTask(thirdPartyModelId, payload)
 	if err != nil {
+		fmt.Println("7")
 		return true, retryCount, maxRetries, err
 	}
 
-	taskResp, err := client.WaitForTaskCompletion(taskID, 10, 5*time.Second)
+	taskResp, err := client.WaitForTaskCompletion(taskID, 30, 5*time.Second)
 	if err != nil {
+		fmt.Println("8")
 		return true, retryCount, maxRetries, err
 	}
 	// 6. 保存生成的图片
 	path, err := pkg.DownloadAndSaveImages(taskResp.OutputImages[0], 80)
 	if err != nil {
-		return true, retryCount, maxRetries, fmt.Errorf("DownloadAndSaveImages error: %s\n", err.Error())
+		fmt.Println("9")
+		return true, retryCount, maxRetries, fmt.Errorf("DownloadAndSaveImages error: %s", err.Error())
 	}
 	// 7. 更新任务状态为"已完成"
 	// 更新数据库
 	err = dao.UpdateTaskParams("status", 3, msg.TaskID)
 	if err != nil {
-		return true, retryCount, maxRetries, fmt.Errorf("UpdateTaskParams error: %s\n", err.Error())
+		fmt.Println("10")
+		return true, retryCount, maxRetries, fmt.Errorf("UpdateTaskParams error: %s", err.Error())
 	}
 
 	err = dao.UpdateTaskParams("output_image_url", "/"+path, msg.TaskID)
 	if err != nil {
+		fmt.Println("11")
 		return true, retryCount, maxRetries, err
 	}
 
 	err = dao.UpdateTaskParams("actual_seed", payload.Seed, msg.TaskID)
 	if err != nil {
+		fmt.Println("12")
 		return true, retryCount, maxRetries, err
 	}
 
 	err = dao.UpdateTaskParams("generation_time_ms", int64(taskResp.TimeTaken), msg.TaskID)
 	if err != nil {
+		fmt.Println("13")
 		return true, retryCount, maxRetries, err
 	}
 
 	err = dao.UpdateTaskParams("completed_at", time.Now(), msg.TaskID)
 	if err != nil {
+		fmt.Println("14")
 		return true, retryCount, maxRetries, err
 	}
 

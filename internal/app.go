@@ -15,7 +15,7 @@ import (
 // Run 运行一个 app 实例
 func Run() {
 	// 初始化路由引擎
-	// gin.SetMode(gin.ReleaseMode)
+	 gin.SetMode(gin.ReleaseMode)
 	route := gin.New()
 
 	// 注册全局中间件

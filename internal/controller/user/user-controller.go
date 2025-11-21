@@ -469,6 +469,7 @@ func (uc *Controller) HandleWebSocket(ctx *gin.Context) {
 	claims, err := middleware.ParseToken(tokenString)
 
 	if err != nil {
+		log.Printf("[WebSocket] Parse token failed: %v\n", err)
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    middleware.ParseTokenFailed,
 			"message": err.Error(),
@@ -477,6 +478,28 @@ func (uc *Controller) HandleWebSocket(ctx *gin.Context) {
 	}
 
 	userUUID := claims.UserID
+
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+
+	exists, err := rdbClient.Exists(rCtx, userUUID).Result()
+	if err != nil {
+		log.Printf("[WebSocket] Redis error: %v\n", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"code":    middleware.RedisError,
+			"message": "Redis error: " + err.Error(),
+		})
+		return
+	}
+
+	if exists == 0 {
+		log.Printf("[WebSocket] User %s not exists\n", userUUID)
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"code":    middleware.UserNotExists,
+			"message": "user not exists",
+		})
+		return
+	}
 
 	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
