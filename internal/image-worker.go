@@ -148,6 +148,11 @@ func handleText2ImgTask(msg *queue.TaskMessage) (bool, int8, int8, error) {
 		return true, retryCount, maxRetries, err
 	}
 
+	err = dao.UpdateModelUsage(true, payload.ModelID)
+	if err != nil {
+		return true, retryCount, maxRetries, err
+	}
+
 	err = dao.UpdateTaskParams("actual_seed", payload.Seed, msg.TaskID)
 	if err != nil {
 		return true, retryCount, maxRetries, err
@@ -264,6 +269,11 @@ func handleImg2ImgTask(msg *queue.TaskMessage) (bool, int8, int8, error) {
 	}
 
 	err = dao.UpdateTaskParams("output_image_url", "/"+path, msg.TaskID)
+	if err != nil {
+		return true, retryCount, maxRetries, err
+	}
+
+	err = dao.UpdateModelUsage(true, payload.ModelID)
 	if err != nil {
 		return true, retryCount, maxRetries, err
 	}

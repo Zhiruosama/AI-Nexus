@@ -133,6 +133,28 @@ func GetInfoFromModel[T any](_ *DAO, key, modelID string) (T, error) {
 	return val, nil
 }
 
+// UpdateModelUsage 更新模型使用量
+func (d *DAO) UpdateModelUsage(success bool, modelID string) error {
+	var successIncrement int
+	if success {
+		successIncrement = 1
+	}
+
+	sql := `UPDATE image_generation_models
+		SET total_usage = total_usage + 1,
+		    success_count = success_count + ?,
+		    success_rate = (success_count + ?) / (total_usage + 1) * 100
+		WHERE model_id = ?`
+
+	result := db.GlobalDB.Exec(sql, successIncrement, successIncrement, modelID)
+	if result.Error != nil {
+		log.Printf("UpdateModelUsage error: %s\n", result.Error.Error())
+		return result.Error
+	}
+
+	return nil
+}
+
 // CreateText2ImgTask 创建文生图任务
 func (d *DAO) CreateText2ImgTask(ctx *gin.Context, do *image_generation_do.TableImageGenerationTaskDO) error {
 	sql := `INSERT INTO image_generation_tasks (task_id, user_uuid, task_type, status, prompt, negative_prompt, model_id, width, height, num_inference_steps, guidance_scale, seed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`

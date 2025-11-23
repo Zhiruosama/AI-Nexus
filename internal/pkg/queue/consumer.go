@@ -91,6 +91,14 @@ func Consume(queueName string, handler MessageHandler) error {
 				log.Printf("[RabbitMQ] Failed to update error time for task_id %s: %v\n", msg.MessageId, err)
 			}
 
+			if m, ok := taskMsg.Payload.(map[string]any); ok {
+				if modelID, ok := m["model_id"].(string); ok {
+					if errs := dao.UpdateModelUsage(false, modelID); errs != nil {
+						log.Printf("[RabbitMQ] Failed to update model usage for model_id %s: %v\n", modelID, errs)
+					}
+				}
+			}
+
 		} else {
 			// 消费成功
 			if err := msg.Ack(false); err != nil {

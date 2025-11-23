@@ -2,7 +2,7 @@
 
 ### 生图模块
 ### 文生图: seed 参数为可选
-POST http://8.154.30.80:9000/image-generation/image/text2img
+POST http://127.0.0.1:9000/image-generation/image/text2img
 Authorization: {{token}}
 Content-Type: application/json
 
@@ -18,7 +18,7 @@ Content-Type: application/json
 }
 
 ### 图生图: 上传本地图片并创建任务
-POST http://8.154.30.80:9000/image-generation/image/img2img HTTP/1.1
+POST http://127.0.0.1:9000/image-generation/image/img2img HTTP/1.1
 Authorization: {{token}}
 Content-Type: multipart/form-data; boundary=WebKitFormBoundary7MA4YWxkTrZu0gW
 

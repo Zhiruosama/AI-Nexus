@@ -101,6 +101,7 @@ CREATE TABLE IF NOT EXISTS `image_generation_models` (
 
   -- 统计信息
   `total_usage` BIGINT UNSIGNED DEFAULT 0 COMMENT '累计使用次数',
+  `success_count` BIGINT UNSIGNED DEFAULT 0 COMMENT '成功次数',
   `success_rate` DECIMAL(5,2) COMMENT '成功率百分比',
 
   -- 状态
