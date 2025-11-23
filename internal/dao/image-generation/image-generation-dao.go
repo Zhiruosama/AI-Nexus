@@ -248,6 +248,19 @@ func (d *DAO) InsertDeadLetterTask(do *image_generation_do.TableDeadLetterTasksD
 	return nil
 }
 
+// CheckTaskExists 检查任务是否存在
+func (d *DAO) CheckTaskExists(ctx *gin.Context, taskID string) (bool, error) {
+	var count int64
+	sql := `SELECT COUNT(*) FROM image_generation_tasks WHERE task_id = ?`
+	result := db.GlobalDB.Raw(sql, taskID).Scan(&count)
+
+	if result.Error != nil {
+		logger.Error(ctx, "CheckTaskExists error: %s", result.Error.Error())
+		return false, result.Error
+	}
+	return count > 0, nil
+}
+
 // buildQueryCondition 构建查询条件
 func buildQueryCondition(query *image_generation_query.ModelsQuery) (string, []any) {
 	where := make([]string, 0)

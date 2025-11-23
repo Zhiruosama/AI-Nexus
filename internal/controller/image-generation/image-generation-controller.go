@@ -404,6 +404,35 @@ func (c *Controller) Img2Img(ctx *gin.Context) {
 	})
 }
 
+// CancelTask 取消任务
+func (c *Controller) CancelTask(ctx *gin.Context) {
+	taskID := ctx.Query("task_id")
+	if taskID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadRequest,
+			"message": "task_id is required",
+		})
+		return
+	}
+
+	if err := c.ImageGenerationService.CancelTask(ctx, taskID); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "cancel task success",
+		"data": gin.H{
+			"task_id": taskID,
+			"status":  "cancelled",
+		},
+	})
+}
+
 // validateModelCreateRequest 校验创建模型请求参数
 func validateModelCreateRequest(req *image_generation_dto.ModelCreateDTO) error {
 	// 参数校验

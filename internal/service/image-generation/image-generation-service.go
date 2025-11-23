@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -418,4 +419,44 @@ func (s *Service) Img2Img(ctx *gin.Context, dto *image_generation_dto.Img2ImgDTO
 	}
 
 	return taskID, nil
+}
+
+// CancelTask 取消任务
+func (s *Service) CancelTask(ctx *gin.Context, taskID string) error {
+	ok, err := s.ImageGenerationDAO.CheckTaskExists(ctx, taskID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("task_id '%s' does not exist", taskID)
+	}
+
+	// 如果是img2img任务 则删除前面保存到服务器里的图片
+	taskType, err := image_generation_dao.GetTaskInfo[int8](s.ImageGenerationDAO, "task_type", taskID)
+	if err != nil {
+		return err
+	}
+	if taskType == 2 {
+		inputURL, err := image_generation_dao.GetTaskInfo[string](s.ImageGenerationDAO, "input_image_url", taskID)
+		if err == nil && inputURL != "" {
+			u, err := url.Parse(inputURL)
+			if err != nil {
+				return err
+			}
+			filename := filepath.Base(u.Path)
+			dst := filepath.Join("static", "images", filename)
+			if err = os.Remove(dst); err != nil && !os.IsNotExist(err) {
+				return err
+			}
+		}
+	}
+
+	if err := s.ImageGenerationDAO.UpdateTaskParams("status", 5, taskID); err != nil {
+		return err
+	}
+	if err := s.ImageGenerationDAO.UpdateTaskParams("input_image_url", "", taskID); err != nil {
+		return err
+	}
+
+	return nil
 }

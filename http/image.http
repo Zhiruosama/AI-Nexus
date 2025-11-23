@@ -60,3 +60,12 @@ Content-Type: image/png
 
 < ./static/avatar/default.png
 --WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 取消任务
+POST http://127.0.0.1:9000/image-generation/image/cancel
+Authorization: {{token}}
+Content-Type: application/json
+
+{
+  "task_id": "01c21072-47c6-453f-a122-d2b4dbf4c216"
+}

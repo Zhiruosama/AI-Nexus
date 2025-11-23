@@ -31,6 +31,7 @@ func InitImageGenerationRoutes(r *gin.Engine) {
 		{
 			img.POST("/text2img", igc.Text2Img)
 			img.POST("/img2img", igc.Img2Img)
+			img.POST("/cancel", igc.CancelTask)
 		}
 	}
 }
