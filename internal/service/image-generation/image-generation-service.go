@@ -436,6 +436,7 @@ func (s *Service) CancelTask(ctx *gin.Context, taskID string) error {
 	if err != nil {
 		return err
 	}
+
 	if taskType == 2 {
 		inputURL, err := image_generation_dao.GetTaskInfo[string](s.ImageGenerationDAO, "input_image_url", taskID)
 		if err == nil && inputURL != "" {
@@ -446,6 +447,7 @@ func (s *Service) CancelTask(ctx *gin.Context, taskID string) error {
 			filename := filepath.Base(u.Path)
 			dst := filepath.Join("static", "images", filename)
 			if err = os.Remove(dst); err != nil && !os.IsNotExist(err) {
+				logger.Error(ctx, "Remove img2img input image error: %s", err.Error())
 				return err
 			}
 		}

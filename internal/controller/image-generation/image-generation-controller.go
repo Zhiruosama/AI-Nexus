@@ -407,6 +407,7 @@ func (c *Controller) Img2Img(ctx *gin.Context) {
 // CancelTask 取消任务
 func (c *Controller) CancelTask(ctx *gin.Context) {
 	taskID := ctx.Query("task_id")
+
 	if taskID == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    http.StatusBadRequest,
