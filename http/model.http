@@ -1,0 +1,145 @@
+## 模型模块
+### 创建新模型
+POST http://127.0.0.1:9000/image-generation/model/create
+Content-Type: application/json
+
+{
+  "model_id": "flux.1-dev",
+  "model_name": "FLUX.1-dev",
+  "model_type": "img2img",
+  "provider": "modelscope",
+  "description": "FLUX.1 [dev] 是一个具有 120 亿参数的修正流变换器，能够根据图像描述生成图像",
+  "tags": "英文渲染",
+  "sort_order": 10,
+  "is_active": true,
+  "is_recommended": true,
+  "third_party_model_id": "MusePublic/FLUX.1-Kontext-Dev",
+  "base_url": "https://api-inference.modelscope.cn/",
+  "default_width": 1024,
+  "default_height": 1024,
+  "max_width": 2048,
+  "max_height": 2048,
+  "min_steps": 15,
+  "max_steps": 50
+}
+
+### 批量创建模型
+POST http://127.0.0.1:9000/image-generation/model/batchcreate
+Content-Type: application/json
+
+{
+  "models":[
+    {
+      "model_id": "hunyuanimage-3.0",
+      "model_name": "HunyuanImage-3.0",
+      "model_type": "text2img",
+      "provider": "modelscope",
+      "description": "HunyuanImage-3.0 是一个开创性的原生多模态模型，在自回归框架内统一了多模态理解和生成。我们的文本到图像模块实现了与领先的闭源模型相当或超越的性能。",
+      "tags": "高质量,中文渲染",
+      "sort_order": 10,
+      "is_active": true,
+      "is_recommended": true,
+      "third_party_model_id": "Tencent-Hunyuan/HunyuanImage-3.0",
+      "base_url": "https://api-inference.modelscope.cn/",
+      "default_width": 1024,
+      "default_height": 1024,
+      "max_width": 2048,
+      "max_height": 2048,
+      "min_steps": 15,
+      "max_steps": 50
+    },
+    {
+      "model_id": "flux.1-dev",
+      "model_name": "FLUX.1-dev",
+      "model_type": "text2img",
+      "provider": "modelscope",
+      "description": "FLUX.1 [dev] 是一个具有 120 亿参数的修正流变换器，能够根据文本描述生成图像",
+      "tags": "英文渲染",
+      "sort_order": 20,
+      "is_active": true,
+      "is_recommended": false,
+      "third_party_model_id": "MusePublic/489_ckpt_FLUX_1",
+      "base_url": "https://api-inference.modelscope.cn/",
+      "default_width": 1024,
+      "default_height": 1024,
+      "max_width": 2048,
+      "max_height": 2048,
+      "min_steps": 15,
+      "max_steps": 50
+    }
+  ]
+}
+
+### 删除模型
+DELETE http://127.0.0.1:9000/image-generation/model/delete?ids=flux.1-dev
+
+### 批量删除模型
+DELETE http://127.0.0.1:9000/image-generation/model/delete?ids=hunyuanimage-3.0,flux.1-dev
+
+### 局部数据更新
+PUT http://127.0.0.1:9000/image-generation/model/update
+Content-Type: application/json
+
+{
+  "model_id": "flux.1-dev",
+  "model_name": "Flux 1 Dev",
+  "is_active": true,
+  "default_height": 768,
+  "max_width": 1024,
+  "max_height": 1024
+}
+
+### 获取模型信息
+GET http://127.0.0.1:9000/image-generation/model/info?model_id=qwen-image
+
+### 查询模型列表 - 基础查询（无条件，默认分页）
+GET http://127.0.0.1:9000/image-generation/model/query
+
+### 查询模型列表 - 指定分页参数
+GET http://127.0.0.1:9000/image-generation/model/query?pageIndex=0&pageSize=10
+
+### 查询模型列表 - 按模型类型查询
+GET http://127.0.0.1:9000/image-generation/model/query?model_type=text2img
+
+### 查询模型列表 - 按提供商查询
+GET http://127.0.0.1:9000/image-generation/model/query?provider=modelscope
+
+### 查询模型列表 - 查询启用的模型
+GET http://127.0.0.1:9000/image-generation/model/query?is_active=true
+
+### 查询模型列表 - 查询推荐模型
+GET http://127.0.0.1:9000/image-generation/model/query?is_recommended=true
+
+### 查询模型列表 - 查询未推荐的模型
+GET http://127.0.0.1:9000/image-generation/model/query?is_recommended=false
+
+### 查询模型列表 - 按宽度查询（查询支持宽度 >= 1024 的模型）
+GET http://127.0.0.1:9000/image-generation/model/query?width=1024
+
+### 查询模型列表 - 按高度查询（查询支持高度 >= 1024 的模型）
+GET http://127.0.0.1:9000/image-generation/model/query?height=1024
+
+### 查询模型列表 - 按步数查询（查询支持 20 步的模型）
+GET http://127.0.0.1:9000/image-generation/model/query?steps=20
+
+### 查询模型列表 - 按创建时间查询（查询 2025-11-14 之后创建的）
+GET http://127.0.0.1:9000/image-generation/model/query?create_at=2025-11-14
+
+### 查询模型列表 - 全文搜索（在 model_name/description/tags 中搜索）
+GET http://127.0.0.1:9000/image-generation/model/query?q=中文
+
+### 查询模型列表 - 组合条件查询 1（推荐的且启用的模型）
+GET http://127.0.0.1:9000/image-generation/model/query?is_recommended=true&is_active=true
+
+### 查询模型列表 - 组合条件查询 2（支持1024分辨率的推荐模型）
+GET http://127.0.0.1:9000/image-generation/model/query?width=1024&height=1024&is_recommended=true
+
+### 查询模型列表 - 组合条件查询 3（modelscope 提供的中文渲染模型）
+GET http://127.0.0.1:9000/image-generation/model/query?provider=modelscope&q=中文
+
+### 查询模型列表 - 组合条件查询 4（带分页的复杂查询）
+GET http://127.0.0.1:9000/image-generation/model/query?is_active=true&width=1024&pageIndex=0&pageSize=5
+
+### 查询模型列表 - 按第三方模型ID查询
+GET http://127.0.0.1:9000/image-generation/model/query?third_party_model_id=Qwen/Qwen-Image
+

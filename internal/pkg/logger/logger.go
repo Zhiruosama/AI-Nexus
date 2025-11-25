@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func formatLog(level string, requestID interface{}, message string) string {
+func formatLog(level string, requestID any, message string) string {
 	return fmt.Sprintf("%s [%s] RequestID=%v %s",
 		time.Now().Format("2006-01-02 15:04:05"),
 		level,
@@ -20,21 +20,21 @@ func formatLog(level string, requestID interface{}, message string) string {
 }
 
 // Info 记录一条 Info 级别的日志
-func Info(c *gin.Context, format string, args ...interface{}) {
+func Info(c *gin.Context, format string, args ...any) {
 	requestID, _ := c.Get(middleware.RequestIDKey)
 	message := fmt.Sprintf(format, args...)
 	log.Println(formatLog("[INFO]", requestID, message))
 }
 
 // Warn 记录一条 Warn 级别的日志
-func Warn(c *gin.Context, format string, args ...interface{}) {
+func Warn(c *gin.Context, format string, args ...any) {
 	requestID, _ := c.Get(middleware.RequestIDKey)
 	message := fmt.Sprintf(format, args...)
 	log.Println(formatLog("[WARN]", requestID, message))
 }
 
 // Error 记录一条 Error 级别的日志
-func Error(c *gin.Context, format string, args ...interface{}) {
+func Error(c *gin.Context, format string, args ...any) {
 	requestID, _ := c.Get(middleware.RequestIDKey)
 	message := fmt.Sprintf(format, args...)
 	log.Println(formatLog("[ERROR]", requestID, message))

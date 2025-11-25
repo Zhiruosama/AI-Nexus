@@ -1,5 +1,6 @@
 server:
   host: 0.0.0.0
+  public: 8.154.30.80
   port: 9000
 
 mysql:
@@ -24,3 +25,10 @@ deduplication:
 grpcclient:
   serveraddress: 8.154.30.80:50002
   defaulttimeout: 10s
+
+rabbitmq:
+  host: 8.154.30.80
+  port: 5672
+  user: murane
+  password: 845924
+  vhost: /

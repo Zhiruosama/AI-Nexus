@@ -2,7 +2,16 @@
 package user
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"time"
 
 	user_dao "github.com/Zhiruosama/ai_nexus/internal/dao/user"
 	user_do "github.com/Zhiruosama/ai_nexus/internal/domain/do/user"
@@ -32,7 +41,10 @@ func NewService() *Service {
 }
 
 const (
-	codePrefix = "code_"
+	codePrefix       = "code_"
+	infoPrefix       = "info_"
+	allinfoKey       = "allInfoForUsers"
+	allinfoKeyPrefix = "allInfoForUsers_"
 )
 
 // SendEmailCode 发送邮箱服务
@@ -46,7 +58,7 @@ func (s *Service) SendEmailCode(ctx *gin.Context, dto *user_dto.SendEmailCode) e
 		return err
 	}
 	do.Code = code
-	do.Purpose = 1
+	do.Purpose = int8(dto.Purpose)
 
 	err = s.UserDao.SendEmailCode(ctx, do)
 	if err != nil {
@@ -108,21 +120,31 @@ func (s *Service) Register(ctx *gin.Context, dto *user_dto.RegisterRequest) erro
 		return err
 	}
 
+	if delErr := rdb.Rdb.Del(rdb.Ctx, allinfoKey).Err(); delErr != nil {
+		logger.Error(ctx, "Delete all users cache error: %s", delErr.Error())
+	}
+
+	delUserInfoByPage(ctx)
+
 	return nil
 }
 
 // LoginWithNicknamePassword 用户名密码登录
-func (s *Service) LoginWithNicknamePassword(ctx *gin.Context, query *user_query.LoginQuery, vo *user_vo.LoginVO) error {
+func (s *Service) LoginWithNicknamePassword(ctx *gin.Context, req *user_dto.LoginRequest, vo *user_vo.LoginVO) error {
 	rdbClient := rdb.Rdb
 	rCtx := rdb.Ctx
-	uuid, password, err := s.UserDao.GetPasswordByNickname(ctx, query.Nickname)
+	uuid, password, err := s.UserDao.GetPasswordByNickname(ctx, req.NickName)
+
 	if err != nil {
 		return err
+	}
+	if uuid == "" || password == "" {
+		return fmt.Errorf("user not exists")
 	}
 
 	_, err = rdbClient.Get(rCtx, uuid).Result()
 	if err == redis.Nil {
-		ok, errs := pkg.VerifyPassword(query.PassWord, password)
+		ok, errs := pkg.VerifyPassword(req.PassWord, password)
 		if errs != nil {
 			return fmt.Errorf("VerifyPassword error")
 		} else if !ok {
@@ -131,11 +153,20 @@ func (s *Service) LoginWithNicknamePassword(ctx *gin.Context, query *user_query.
 
 		vo.JWTToken, errs = middleware.GenerateToken(uuid)
 		if errs != nil {
-			logger.Error(ctx, "Generate token error: %s", err.Error())
-			return err
+			logger.Error(ctx, "Generate token error: %s", errs.Error())
+			return errs
 		}
 
-		rdbClient.Set(rCtx, uuid, vo.JWTToken, 0)
+		_, errs = rdbClient.Set(rCtx, uuid, vo.JWTToken, 0).Result()
+		if errs != nil {
+			logger.Error(ctx, "Set token to redis error: %s", errs.Error())
+			return errs
+		}
+
+		errs = s.UserDao.UpdateLoginTime(ctx, uuid)
+		if errs != nil {
+			return errs
+		}
 
 		return nil
 	}
@@ -147,17 +178,21 @@ func (s *Service) LoginWithNicknamePassword(ctx *gin.Context, query *user_query.
 }
 
 // LoginWithEmailPassword 邮箱密码登录
-func (s *Service) LoginWithEmailPassword(ctx *gin.Context, query *user_query.LoginQuery, vo *user_vo.LoginVO) error {
+func (s *Service) LoginWithEmailPassword(ctx *gin.Context, req *user_dto.LoginRequest, vo *user_vo.LoginVO) error {
 	rdbClient := rdb.Rdb
 	rCtx := rdb.Ctx
-	uuid, password, err := s.UserDao.GetPasswordByEmail(ctx, query.Email)
+
+	uuid, password, err := s.UserDao.GetPasswordByEmail(ctx, req.Email)
 	if err != nil {
 		return err
+	}
+	if uuid == "" || password == "" {
+		return fmt.Errorf("user not exists")
 	}
 
 	_, err = rdbClient.Get(rCtx, uuid).Result()
 	if err == redis.Nil {
-		ok, errs := pkg.VerifyPassword(query.PassWord, password)
+		ok, errs := pkg.VerifyPassword(req.PassWord, password)
 		if errs != nil {
 			return fmt.Errorf("VerifyPassword error")
 		} else if !ok {
@@ -166,11 +201,20 @@ func (s *Service) LoginWithEmailPassword(ctx *gin.Context, query *user_query.Log
 
 		vo.JWTToken, errs = middleware.GenerateToken(uuid)
 		if errs != nil {
-			logger.Error(ctx, "Generate token error: %s", err.Error())
-			return err
+			logger.Error(ctx, "Generate token error: %s", errs.Error())
+			return errs
 		}
 
-		rdbClient.Set(rCtx, uuid, vo.JWTToken, 0)
+		_, errs = rdbClient.Set(rCtx, uuid, vo.JWTToken, 0).Result()
+		if errs != nil {
+			logger.Error(ctx, "Set token to redis error: %s", errs.Error())
+			return errs
+		}
+
+		errs = s.UserDao.UpdateLoginTime(ctx, uuid)
+		if errs != nil {
+			return errs
+		}
 
 		return nil
 	}
@@ -183,22 +227,26 @@ func (s *Service) LoginWithEmailPassword(ctx *gin.Context, query *user_query.Log
 }
 
 // LoginWithEmailVerifyCode 邮箱验证码登录
-func (s *Service) LoginWithEmailVerifyCode(ctx *gin.Context, query *user_query.LoginQuery, vo *user_vo.LoginVO) error {
+func (s *Service) LoginWithEmailVerifyCode(ctx *gin.Context, req *user_dto.LoginRequest, vo *user_vo.LoginVO) error {
 	rdbClient := rdb.Rdb
 	rCtx := rdb.Ctx
-	code, err := rdbClient.Get(rCtx, codePrefix+query.Email).Result()
+
+	code, err := rdbClient.Get(rCtx, codePrefix+req.Email).Result()
 	if err != nil {
 		logger.Error(ctx, "Get verify code error: %s", err.Error())
 		return err
 	}
-	uuid, _, err := s.UserDao.GetPasswordByEmail(ctx, query.Email)
-	if err != nil {
-		logger.Error(ctx, "Get uuid error: %s", err.Error())
-		return err
+
+	if code != req.VerifyCode {
+		return fmt.Errorf("email verification code error")
 	}
 
-	if code != query.VerifyCode {
-		return fmt.Errorf("email verification code error")
+	uuid, _, err := s.UserDao.GetPasswordByEmail(ctx, req.Email)
+	if err != nil {
+		return err
+	}
+	if uuid == "" {
+		return fmt.Errorf("user not exists")
 	}
 
 	vo.JWTToken, err = middleware.GenerateToken(uuid)
@@ -207,24 +255,388 @@ func (s *Service) LoginWithEmailVerifyCode(ctx *gin.Context, query *user_query.L
 		return err
 	}
 
-	rdbClient.Set(rCtx, uuid, vo.JWTToken, 0)
+	_, err = rdbClient.Set(rCtx, uuid, vo.JWTToken, 0).Result()
+	if err != nil {
+		logger.Error(ctx, "Set token to redis error: %s", err.Error())
+		return err
+	}
+
+	err = s.UserDao.UpdateLoginTime(ctx, uuid)
+	if err != nil {
+		return err
+	}
+
+	if err = rdbClient.Del(rCtx, codePrefix+req.Email).Err(); err != nil {
+		logger.Error(ctx, "Remove code in redis error: %s", err.Error())
+		return err
+	}
 
 	return nil
 }
 
 // GetUserInfo 获取用户信息
 func (s *Service) GetUserInfo(ctx *gin.Context, userid string) (*user_vo.InfoVO, error) {
-	userDO, err := s.UserDao.GetUserByID(ctx, userid)
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+	var uvo = &user_vo.InfoVO{}
 
-	if err != nil {
-		logger.Error(ctx, "Get user error: %s", err.Error())
+	info, err := rdbClient.Get(rCtx, infoPrefix+userid).Result()
+	if err != nil && err != redis.Nil {
+		logger.Error(ctx, "Get userinfo from redis error: %s", err.Error())
 		return nil, err
 	}
 
-	return &user_vo.InfoVO{
-		UUID:     userDO.UUID,
-		Nickname: userDO.Nickname,
-		Email:    userDO.Email,
-		Avatar:   userDO.Avatar,
-	}, nil
+	if err == nil && info != "" {
+		if err = json.Unmarshal([]byte(info), uvo); err != nil {
+			logger.Error(ctx, "Unmarshal error in get user info: %s", err.Error())
+			return nil, err
+		}
+		return uvo, nil
+	}
+
+	userDO, err := s.UserDao.GetUserByID(ctx, userid)
+	if err != nil {
+		return nil, err
+	}
+
+	uvo.UUID = userDO.UUID
+	uvo.Nickname = userDO.Nickname
+	uvo.Email = userDO.Email
+	uvo.Avatar = userDO.Avatar
+
+	jsonStr, err := json.Marshal(uvo)
+	if err != nil {
+		logger.Error(ctx, "Marshal error in get user info: %s", err.Error())
+		return nil, err
+	}
+
+	if err = rdbClient.Set(rCtx, infoPrefix+userid, jsonStr, time.Minute*10).Err(); err != nil {
+		logger.Error(ctx, "Set userinfo to redis error: %s", err.Error())
+	}
+
+	return uvo, nil
+}
+
+// GetAllUsers 获取全部用户信息
+func (s *Service) GetAllUsers(ctx *gin.Context, users *user_vo.ListUserInfoVO) error {
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+
+	info, err := rdbClient.Get(rCtx, allinfoKey).Result()
+	if err != nil && err != redis.Nil {
+		logger.Error(ctx, "Get all userinfo from redis error: %s", err.Error())
+		return err
+	}
+
+	if err == nil && info != "" {
+		if err = json.Unmarshal([]byte(info), &users.Users); err != nil {
+			logger.Error(ctx, "Unmarshal error in get all user info: %s", err.Error())
+			return err
+		}
+		users.Code = 200
+		users.Message = "Success get all user info"
+		users.Count = len(users.Users)
+		return nil
+	}
+
+	userDos, count, err := s.UserDao.GetAllUsers(ctx)
+	if err != nil {
+		return err
+	}
+
+	users.Code = 200
+	users.Message = "Success get all user info"
+	users.Count = count
+	for _, userDo := range userDos {
+		users.Users = append(users.Users, user_vo.TableUserVO{
+			ID:        userDo.ID,
+			UUID:      userDo.UUID,
+			Nickname:  userDo.Nickname,
+			Avatar:    userDo.Avatar,
+			Email:     userDo.Email,
+			LastLogin: userDo.LastLogin,
+			CreatedAt: userDo.CreatedAt,
+			UpdatedAt: userDo.UpdatedAt,
+		})
+	}
+
+	jsonStr, err := json.Marshal(users.Users)
+	if err != nil {
+		logger.Error(ctx, "Marshal error in get all user info: %s", err.Error())
+		return err
+	}
+
+	if err = rdbClient.Set(rCtx, allinfoKey, jsonStr, time.Minute*10).Err(); err != nil {
+		logger.Error(ctx, "Set all userinfo to redis error: %s", err.Error())
+	}
+
+	return nil
+}
+
+// GetAllUsersByPage 获取所有用户信息-分页
+func (s *Service) GetAllUsersByPage(ctx *gin.Context, users *user_vo.ListUserInfoVO, query *user_query.GetAllUsersQuery) error {
+	users.PageIndex = query.PageIndex
+	users.PageSize = query.PageSize
+
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+
+	key := fmt.Sprintf("%s%d_%d", allinfoKeyPrefix, query.PageIndex, query.PageSize)
+
+	info, err := rdbClient.Get(rCtx, key).Result()
+	if err != nil && err != redis.Nil {
+		logger.Error(ctx, "Get all userinfo by page from redis error: %s", err.Error())
+		return err
+	}
+
+	if err == nil && info != "" {
+		if err = json.Unmarshal([]byte(info), &users.Users); err != nil {
+			logger.Error(ctx, "Unmarshal error in get all user info by page: %s", err.Error())
+			return err
+		}
+		users.Code = 200
+		users.Message = "Success get all user info by page"
+		users.Count = len(users.Users)
+		return nil
+	}
+
+	userDos, count, err := s.UserDao.GetAllUsersByPage(ctx, query)
+	if err != nil {
+		return err
+	}
+
+	users.Code = 200
+	users.Message = "Success get all user info by page"
+	users.Count = int(count)
+	for _, userDo := range userDos {
+		users.Users = append(users.Users, user_vo.TableUserVO{
+			ID:        userDo.ID,
+			UUID:      userDo.UUID,
+			Nickname:  userDo.Nickname,
+			Avatar:    userDo.Avatar,
+			Email:     userDo.Email,
+			LastLogin: userDo.LastLogin,
+			CreatedAt: userDo.CreatedAt,
+			UpdatedAt: userDo.UpdatedAt,
+		})
+	}
+
+	jsonStr, err := json.Marshal(users.Users)
+	if err != nil {
+		logger.Error(ctx, "Marshal error in get all user info by page: %s", err.Error())
+		return err
+	}
+
+	if err = rdbClient.Set(rCtx, key, jsonStr, time.Minute*10).Err(); err != nil {
+		logger.Error(ctx, "Set all userinfo by page to redis error: %s", err.Error())
+	}
+
+	return nil
+}
+
+// UpdateUserInfo 更新用户信息(名称 头像)
+func (s *Service) UpdateUserInfo(ctx *gin.Context, req *user_dto.UpdateInfoRequest) error {
+	UserID, _ := ctx.Get("user_id")
+	userid, _ := UserID.(string)
+
+	var nickName string
+	var path string
+	var dst string
+
+	if req.NickName != "" {
+		nickName = req.NickName
+	}
+
+	if req.Avatar != nil {
+		if req.Sha256 == "" {
+			return fmt.Errorf("please upload your file sha256 value")
+		}
+
+		file, err := req.Avatar.Open()
+		if err != nil {
+			logger.Error(ctx, "Open uploaded file error: %s", err.Error())
+			return err
+		}
+		defer func() {
+			if closeErr := file.Close(); closeErr != nil {
+				logger.Error(ctx, "Close uploaded file error: %s", closeErr.Error())
+			}
+		}()
+
+		hash := sha256.New()
+		if _, err = io.Copy(hash, file); err != nil {
+			logger.Error(ctx, "calcute sha256 error: %s", err.Error())
+			return err
+		}
+		calculatedHash := hex.EncodeToString(hash.Sum(nil))
+
+		if calculatedHash != req.Sha256 {
+			return fmt.Errorf("the file destroyed")
+		}
+
+		ext := filepath.Ext(req.Avatar.Filename)
+
+		allowedExts := []string{".png", ".jpg", ".jpeg", ".webp"}
+		isValid := slices.Contains(allowedExts, ext)
+		if !isValid {
+			return fmt.Errorf("unsupported file format: %s, only png, jpg, jpeg, webp are allowed", ext)
+		}
+
+		filname := "avatar-" + userid + ext
+		dst = filepath.Join("static", "avatar", filname)
+
+		err = ctx.SaveUploadedFile(req.Avatar, dst)
+		if err != nil {
+			logger.Error(ctx, "Save uploaded file error: %s", err.Error())
+			return err
+		}
+
+		if ext != ".webp" {
+			ok := pkg.ProcessImageToWebP(ctx, dst, 90)
+			if !ok {
+				if removeErr := os.Remove(dst); removeErr != nil {
+					logger.Error(ctx, "Remove failed conversion file error: %s", removeErr.Error())
+				}
+				return fmt.Errorf("failed to convert image to webp format")
+			}
+		}
+		finalFileName := "avatar-" + userid + ".webp"
+		path = filepath.Join("/static/avatar", finalFileName)
+		dst = filepath.Join("static", "avatar", finalFileName)
+	}
+
+	err := s.UserDao.UpdateUserInfo(ctx, userid, nickName, path)
+	if err != nil {
+		if dst != "" {
+			if errs := os.Remove(dst); errs != nil {
+				logger.Error(ctx, "Remove file error: %s", errs.Error())
+			}
+		}
+		return err
+	}
+
+	if delErr := rdb.Rdb.Del(rdb.Ctx, infoPrefix+userid).Err(); delErr != nil {
+		logger.Error(ctx, "Delete redis cache error: %s", delErr.Error())
+	}
+	if delErr := rdb.Rdb.Del(rdb.Ctx, allinfoKey).Err(); delErr != nil {
+		logger.Error(ctx, "Delete all users cache error: %s", delErr.Error())
+	}
+
+	delUserInfoByPage(ctx)
+
+	return nil
+}
+
+// DestroyUser 注销用户
+func (s *Service) DestroyUser(ctx *gin.Context) error {
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+
+	uuidV, _ := ctx.Get("user_id")
+	uuid := uuidV.(string)
+
+	path, err := s.UserDao.GetUserAvatar(ctx, uuid)
+	if err != nil {
+		return err
+	}
+
+	err = s.UserDao.DestroyUser(ctx, uuid)
+	if err != nil {
+		return err
+	}
+
+	if rdberr := rdbClient.Del(rCtx, uuid).Err(); rdberr != nil {
+		logger.Error(ctx, "Remove user form redis error: %s", rdberr.Error())
+	}
+
+	if rdberr := rdbClient.Del(rCtx, infoPrefix+uuid).Err(); rdberr != nil {
+		logger.Error(ctx, "Remove user form redis error: %s", rdberr.Error())
+	}
+
+	if rdberr := rdbClient.Del(rCtx, allinfoKey).Err(); rdberr != nil {
+		logger.Error(ctx, "Remove user form redis error: %s", rdberr.Error())
+	}
+
+	delUserInfoByPage(ctx)
+
+	dst := strings.TrimPrefix(path, "/")
+	if err := os.Remove(dst); err != nil && !os.IsNotExist(err) {
+		logger.Warn(ctx, "Remove avatar file error (non-critical): %s", err.Error())
+	}
+
+	return nil
+}
+
+// ResetUserPassword 更新用户密码
+func (s *Service) ResetUserPassword(ctx *gin.Context, req *user_dto.UpdatePasswordRequest) error {
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+
+	uuid, err := s.UserDao.GetUserIDByEmail(ctx, req.Email)
+	if err != nil {
+		return err
+	}
+
+	if uuid == "" {
+		return fmt.Errorf("user not exist")
+	}
+
+	exists, err := rdbClient.Exists(rCtx, uuid).Result()
+	if err != nil {
+		logger.Error(ctx, "check user exist error: %s", err.Error())
+		return err
+	}
+
+	if exists != 0 {
+		return fmt.Errorf("user is logged in so editing is prohibited")
+	}
+
+	code, err := rdbClient.Get(rCtx, codePrefix+req.Email).Result()
+	if err != nil {
+		logger.Error(ctx, "get code from redis error: %s", err.Error())
+		return err
+	}
+
+	if code != req.VerifyCode {
+		logger.Error(ctx, "verify code is not correct: %s", req.VerifyCode)
+		return err
+	}
+
+	newPasswordHash, err := pkg.HashPassword(req.NewPassWord)
+	if err != nil {
+		logger.Error(ctx, "hashPassword error: %s", err.Error())
+		return err
+	}
+
+	err = s.UserDao.ResetUserPassword(ctx, uuid, newPasswordHash)
+	if err != nil {
+		logger.Error(ctx, "ResetUserPassword error: %s", err.Error())
+		return err
+	}
+
+	_, err = rdbClient.Del(rCtx, codePrefix+req.Email).Result()
+	if err != nil {
+		logger.Error(ctx, "Delete verify code error: %s", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func delUserInfoByPage(ctx *gin.Context) {
+	rdbClient := rdb.Rdb
+	rCtx := rdb.Ctx
+
+	pattern := allinfoKeyPrefix + "*"
+
+	iter := rdbClient.Scan(rCtx, 0, pattern, 0).Iterator()
+	for iter.Next(rCtx) {
+		key := iter.Val()
+		if err := rdbClient.Del(rCtx, key).Err(); err != nil {
+			logger.Error(ctx, "Delete key %s failed: %v", key, err)
+		}
+	}
+	if err := iter.Err(); err != nil {
+		logger.Error(ctx, "Scan error: %v", err)
+	}
 }

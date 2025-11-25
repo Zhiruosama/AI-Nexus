@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// InitUserRoutes 初始化演示模块的路由
+// InitUserRoutes 初始化用户模块的路由
 func InitUserRoutes(r *gin.Engine) {
 	us := user_service.NewService()
 	uc := user_controller.NewController(us)
@@ -17,8 +17,13 @@ func InitUserRoutes(r *gin.Engine) {
 	{
 		user.POST("/send-code", uc.SendEmailCode)
 		user.POST("/register", uc.Register)
-		user.GET("/login", uc.Login)
+		user.POST("/login", uc.Login)
 		user.GET("/logout", middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.Logout)
-		user.GET("/getuserinfo", middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.GetUserInfo)
+		user.GET("/get-userinfo", middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.GetUserInfo)
+		user.GET("/getall-userinfo", uc.GetAllUsers)
+		user.PUT("/update-userinfo", middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.UpdateUserInfo)
+		user.POST("/reset-password", middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.ResetUserPassword)
+		user.DELETE("/destroy", middleware.AuthMiddleware(), uc.DestroyUser)
+		user.GET("/ws", middleware.RateLimitingMiddleware(), uc.HandleWebSocket)
 	}
 }

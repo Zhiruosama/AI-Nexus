@@ -7,6 +7,7 @@ import (
 	"github.com/Zhiruosama/ai_nexus/configs"
 	"github.com/Zhiruosama/ai_nexus/internal/middleware"
 	routes_demo "github.com/Zhiruosama/ai_nexus/internal/routes/demo"
+	routes_image_generation "github.com/Zhiruosama/ai_nexus/internal/routes/image-generation"
 	routes_user "github.com/Zhiruosama/ai_nexus/internal/routes/user"
 	"github.com/gin-gonic/gin"
 )
@@ -30,9 +31,10 @@ func Run() {
 	// 注册路由
 	routes_demo.InitDemoRoutes(route)
 	routes_user.InitUserRoutes(route)
+	routes_image_generation.InitImageGenerationRoutes(route)
 
 	// 启动 app
-	log.Printf("[INFO] Server start on: %s:%d", configs.GlobalConfig.Server.Host, configs.GlobalConfig.Server.Port)
+	log.Printf("[Server] Server start on: %s:%d\n", configs.GlobalConfig.Server.Host, configs.GlobalConfig.Server.Port)
 	err := route.Run(configs.GlobalConfig.Server.SerialString())
 	if err != nil {
 		log.Fatalln("[ERROR] Server start error:", err.Error())

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket 测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>WebSocket 连接测试</h1>
+    <button id="connectBtn" onclick="connect()">建立 WebSocket 连接</button>
+    <button id="disconnectBtn" onclick="disconnect()" disabled>断开连接</button>
+    <div id="status" class="disconnected">未连接</div>
+
+    <script>
+        let ws = null;
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const statusDiv = document.getElementById('status');
+
+        // 防止页面意外刷新/关闭
+        window.addEventListener('beforeunload', function (e) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                console.warn('⚠️ 页面即将关闭,WebSocket 连接会断开');
+                e.preventDefault();
+                e.returnValue = '';
+                return '';
+            }
+        });
+
+        // 监听页面可见性变化
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) {
+                console.log('📴 页面隐藏');
+            } else {
+                console.log('📱 页面可见');
+            }
+        });
+
+        function connect() {
+            const url = 'http://8.154.30.80:9000/user/ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDFjMjEwNzItNDdjNi00NTNmLWExMjItZDJiNGRiZjRjMjE2IiwiaXNzIjoiYWktbmV4dXMtYXV0aCIsImV4cCI6MTc2NDIxMzk4MCwiaWF0IjoxNzYzNjA5MTgwfQ.uN8u39JJdhVDgrn3ogPyKFCvUq-5gkbidTQdg4S_jls';
+
+            // 将 http 转换为 ws 协议
+            const wsUrl = url.replace('http://', 'ws://');
+
+            console.log('正在连接到:', wsUrl);
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = function (event) {
+                console.log('✅ WebSocket 连接已建立', event);
+                statusDiv.textContent = '已连接';
+                statusDiv.className = 'connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+            };
+
+            ws.onmessage = function (event) {
+                console.log('📨 收到推送消息:', event.data);
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('📦 解析后的数据:', data);
+
+                    // 处理 ping/pong
+                    if (data.type === 'ping') {
+                        console.log('🏓 收到 ping,发送 pong');
+                        ws.send(JSON.stringify({ type: 'pong' }));
+                    }
+                } catch (e) {
+                    console.log('📄 原始文本消息:', event.data);
+                }
+            };
+
+            ws.onerror = function (error) {
+                console.error('❌ WebSocket 错误:', error);
+            };
+
+            ws.onclose = function (event) {
+                console.log('🔌 WebSocket 连接已关闭', event);
+                console.log('🔍 关闭代码:', event.code);
+                console.log('🔍 关闭原因:', event.reason);
+                console.log('🔍 是否正常关闭:', event.wasClean);
+                statusDiv.textContent = '未连接 (code: ' + event.code + ')';
+                statusDiv.className = 'disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+    </script>
+</body>
+
+</html>

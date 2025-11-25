@@ -41,7 +41,6 @@ func AuthMiddleware() gin.HandlerFunc {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Token error"})
 				return
 			}
-
 			return
 		}
 
