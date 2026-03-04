@@ -1,18 +1,18 @@
 server:
   host: 0.0.0.0
-  public: 8.154.30.80
-  port: 9000
+  public: 192.168.20.131
+  port: 10001
 
 mysql:
-  host: 8.154.30.80
+  host: 127.0.0.1
   port: 3306
   user: ainexus
-  pass: 845924
+  pass: AiNexus@123456
   database: ai_nexus
 
 redis:
-  addr: 8.154.30.80:6379
-  password: 845924
+  addr: 127.0.0.1:6379
+  password: ""
   db: 0
 
 ratelimit:
@@ -23,12 +23,12 @@ deduplication:
   lockduration: 5s
 
 grpcclient:
-  serveraddress: 8.154.30.80:50002
+  serveraddress: 127.0.0.1:50002
   defaulttimeout: 10s
 
 rabbitmq:
-  host: 8.154.30.80
+  host: 127.0.0.1
   port: 5672
-  user: murane
-  password: 845924
+  user: guest
+  password: guest
   vhost: /
