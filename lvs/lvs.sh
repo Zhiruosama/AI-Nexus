@@ -17,7 +17,6 @@ SCHEDULER="wlc"
 # Nginx 后端列表 - IP:PORT:WEIGHT
 BACKENDS=(
     "127.0.0.1:9000:1"
-    "127.0.0.1:9001:1"
 )
 
 # DR 模式专用: 网卡名称
