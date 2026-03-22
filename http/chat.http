@@ -1,0 +1,99 @@
+@token = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMTA3NzBlYzMtNTQ0Zi00NDIzLWI3YjYtMDhjZTc4OGQ4NDliIiwiaXNzIjoiYWktbmV4dXMtYXV0aCIsImV4cCI6MTc3NDcwMzE3MSwiaWF0IjoxNzc0MDk4MzcxfQ.pW_iN9XudhEl7ch-Hfyh_PFmvBMJh7uJlDLGBaukmOo
+
+### API 相关模块
+### 获取 API 列表
+GET http://localhost:8000/chat/api-keys HTTP/1.1
+Authorization: {{token}}
+
+### 创建 API Key
+POST http://localhost:8000/chat/api-keys HTTP/1.1
+Authorization: {{token}}
+Content-Type: application/json
+
+{
+  "provider": "custom",
+  "name": "My Deepseek Key",
+  "base_url": "https://api.deepseek.com",
+  "api_key": "sk-817b9f87528a4391a4c8eb158c0f9545"
+}
+
+### 更新 API Key
+PUT http://localhost:8000/chat/api-keys/1 HTTP/1.1
+Authorization: {{token}}
+Content-Type: application/json
+
+{
+  "provider": "custom",
+  "name": "Updated Key Name",
+  "base_url": "https://api.deepseek.com",
+  "api_key": "sk-817b9f87528a4391a4c8eb158c0f9545"
+}
+
+### 删除 API Key
+DELETE http://localhost:8000/chat/api-keys/3 HTTP/1.1
+Authorization: {{token}}
+
+### 对话相关模块
+### 获取对话列表
+GET http://localhost:8000/chat/conversations HTTP/1.1
+Authorization: {{token}}
+
+### 创建对话
+POST http://localhost:8000/chat/conversations HTTP/1.1
+Authorization: {{token}}
+Content-Type: application/json
+
+{
+  "api_key_id": 4,
+  "title": "My First Conversation",
+  "model": "deepseek-chat",
+  "system_prompt": "You are a cute assistant."
+}
+
+### 获取对话详情
+GET http://localhost:8000/chat/conversations/aa456f8f-e69c-4285-8f51-08a00b909b1e HTTP/1.1
+Authorization: {{token}}
+
+### 删除对话
+DELETE http://localhost:8000/chat/conversations/aa456f8f-e69c-4285-8f51-08a00b909b1e HTTP/1.1
+Authorization: {{token}}
+
+### 更新对话标题
+PUT http://localhost:8000/chat/conversations/aa456f8f-e69c-4285-8f51-08a00b909b1e/title HTTP/1.1
+Authorization: {{token}}
+Content-Type: application/json
+
+{
+  "title": "Updated Conversation Title"
+}
+
+### 发送消息 需用 SSE 方式保持连接，此处无法演示
+
+### 预设相关模块
+### 创建预设
+POST http://localhost:8000/chat/presets HTTP/1.1
+Authorization: {{token}}
+Content-Type: application/json
+
+{
+  "name": "test preset",
+  "content": "You are a helpful assistant that provides concise answers."
+}
+
+### 获取预设列表
+GET http://localhost:8000/chat/presets HTTP/1.1
+Authorization: {{token}}
+
+### 更新预设
+PUT http://localhost:8000/chat/presets/4 HTTP/1.1
+Authorization: {{token}}
+Content-Type: application/json
+
+{
+  "name": "updated preset name",
+  "content": "You are a helpful assistant that provides concise answers."
+}
+
+### 删除预设
+DELETE http://localhost:8000/chat/presets/4 HTTP/1.1
+Authorization: {{token}}

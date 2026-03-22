@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Nexus Chat</title>
+<style>
+:root {
+  --nord0: #2e3440; --nord1: #3b4252; --nord2: #434c5e; --nord3: #4c566a;
+  --nord4: #d8dee9; --nord5: #e5e9f0; --nord6: #eceff4;
+  --nord7: #8fbcbb; --nord8: #88c0d0; --nord9: #81a1c1; --nord10: #5e81ac;
+  --nord11: #bf616a; --nord12: #d08770; --nord13: #ebcb8b; --nord14: #a3be8c;
+  --radius: 8px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', monospace; background: var(--nord0); color: var(--nord4); height: 100vh; display: flex; flex-direction: column; }
+button { cursor: pointer; font-family: inherit; border: none; border-radius: var(--radius); padding: 6px 14px; font-size: 13px; transition: opacity .15s; }
+button:hover { opacity: .85; }
+input, select, textarea { font-family: inherit; font-size: 13px; background: var(--nord1); color: var(--nord4); border: 1px solid var(--nord3); border-radius: var(--radius); padding: 7px 10px; outline: none; }
+input:focus, select:focus, textarea:focus { border-color: var(--nord8); }
+
+/* Layout */
+#auth-bar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--nord1); border-bottom: 1px solid var(--nord2); }
+#auth-bar label { color: var(--nord9); font-size: 13px; white-space: nowrap; }
+#auth-bar input { flex: 1; }
+#auth-bar button { background: var(--nord10); color: var(--nord6); }
+#main { flex: 1; display: flex; overflow: hidden; }
+
+/* Sidebar */
+#sidebar { width: 260px; min-width: 260px; background: var(--nord1); border-right: 1px solid var(--nord2); display: flex; flex-direction: column; }
+.sidebar-section { padding: 10px; border-bottom: 1px solid var(--nord2); }
+.sidebar-section h3 { font-size: 12px; color: var(--nord9); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+.sidebar-section .actions { display: flex; gap: 6px; margin-bottom: 8px; }
+.sidebar-section .actions button { font-size: 12px; padding: 4px 10px; }
+.btn-primary { background: var(--nord10); color: var(--nord6); }
+.btn-danger { background: var(--nord11); color: var(--nord6); }
+.btn-secondary { background: var(--nord3); color: var(--nord4); }
+.list-item { padding: 8px 10px; border-radius: var(--radius); cursor: pointer; font-size: 13px; margin-bottom: 2px; display: flex; justify-content: space-between; align-items: center; color: var(--nord4); }
+.list-item:hover { background: var(--nord2); }
+.list-item.active { background: var(--nord2); color: var(--nord8); }
+.list-item .del { color: var(--nord11); font-size: 11px; opacity: 0; padding: 2px 6px; border-radius: 4px; }
+.list-item:hover .del { opacity: 1; }
+.list-item .del:hover { background: var(--nord11); color: var(--nord6); }
+#conv-list { flex: 1; overflow-y: auto; padding: 6px 10px; }
+
+/* Chat area */
+#chat-area { flex: 1; display: flex; flex-direction: column; }
+#chat-header { padding: 10px 16px; background: var(--nord1); border-bottom: 1px solid var(--nord2); display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
+#chat-header .title { font-size: 14px; color: var(--nord8); }
+#chat-header .model-tag { font-size: 11px; color: var(--nord3); background: var(--nord0); padding: 2px 8px; border-radius: 10px; }
+#messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.msg { max-width: 75%; padding: 10px 14px; border-radius: var(--radius); font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.msg.user { align-self: flex-end; background: var(--nord10); color: var(--nord6); border-bottom-right-radius: 2px; }
+.msg.assistant { align-self: flex-start; background: var(--nord2); color: var(--nord4); border-bottom-left-radius: 2px; }
+.msg.system-msg { align-self: center; background: var(--nord2); color: var(--nord9); font-size: 12px; padding: 6px 12px; }
+.msg.error { align-self: center; background: var(--nord11); color: var(--nord6); font-size: 12px; }
+#input-area { padding: 12px 16px; background: var(--nord1); border-top: 1px solid var(--nord2); display: flex; gap: 8px; }
+#input-area textarea { flex: 1; resize: none; height: 42px; max-height: 120px; }
+#input-area button { background: var(--nord8); color: var(--nord0); font-weight: 600; padding: 8px 20px; }
+#input-area button:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Placeholder */
+.placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--nord3); font-size: 14px; }
+
+/* Params bar */
+#params-bar { padding: 8px 16px; background: var(--nord1); border-top: 1px solid var(--nord2); display: flex; gap: 14px; align-items: center; font-size: 12px; color: var(--nord9); }
+#params-bar label { display: flex; align-items: center; gap: 4px; }
+#params-bar input { width: 70px; padding: 4px 6px; font-size: 12px; }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal { background: var(--nord1); border: 1px solid var(--nord3); border-radius: var(--radius); padding: 20px; width: 400px; max-width: 90vw; }
+.modal h3 { color: var(--nord8); margin-bottom: 14px; font-size: 15px; }
+.modal .field { margin-bottom: 10px; }
+.modal .field label { display: block; font-size: 12px; color: var(--nord9); margin-bottom: 4px; }
+.modal .field input, .modal .field select, .modal .field textarea { width: 100%; }
+.modal .field textarea { height: 60px; resize: vertical; }
+.modal .btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--nord3); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- Auth -->
+<div id="auth-bar">
+  <label>JWT Token:</label>
+  <input id="jwt-input" type="text" placeholder="Bearer eyJhbG...">
+  <button onclick="saveToken()">Save</button>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <!-- API Keys -->
+    <div class="sidebar-section">
+      <h3>API Keys</h3>
+      <div class="actions">
+        <button class="btn-primary" onclick="showAddKeyModal()">+ Add</button>
+        <button class="btn-secondary" onclick="loadKeys()">Refresh</button>
+      </div>
+      <div id="key-list"></div>
+    </div>
+    <!-- Presets -->
+    <div class="sidebar-section">
+      <h3>Presets</h3>
+      <div class="actions">
+        <button class="btn-primary" onclick="showAddPresetModal()">+ Add</button>
+      </div>
+      <div id="preset-list"></div>
+    </div>
+    <!-- Conversations -->
+    <div class="sidebar-section" style="border-bottom:none; flex:1; display:flex; flex-direction:column;">
+      <h3>Conversations</h3>
+      <div class="actions">
+        <button class="btn-primary" onclick="showNewConvModal()">+ New</button>
+      </div>
+      <div id="conv-list" style="flex:1; overflow-y:auto;"></div>
+    </div>
+  </div>
+
+  <!-- Chat -->
+  <div id="chat-area">
+    <div id="chat-header"><span class="title" id="conv-title">Select a conversation</span><span class="model-tag" id="conv-model"></span></div>
+    <div id="messages"><div class="placeholder">Choose or create a conversation to start chatting</div></div>
+    <div id="params-bar">
+      <label>temperature <input id="param-temp" type="number" step="0.1" min="0" max="2" value="0.7"></label>
+      <label>top_p <input id="param-topp" type="number" step="0.1" min="0" max="1" value="1"></label>
+      <label>max_tokens <input id="param-maxtok" type="number" step="256" min="1" value="4096"></label>
+    </div>
+    <div id="input-area">
+      <textarea id="msg-input" placeholder="Type a message... (Shift+Enter for newline)" onkeydown="handleKey(event)"></textarea>
+      <button id="send-btn" onclick="sendMessage()" disabled>Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modals -->
+<div id="modal-container"></div>
+
+<script>
+const BASE = 'http://localhost:8000';
+let token = '';
+let currentConvId = null;
+let currentConv = null;
+let keys = [];
+let streaming = false;
+
+// -- Token --
+function saveToken() {
+  token = document.getElementById('jwt-input').value.trim();
+  if (token && !token.startsWith('Bearer ')) token = 'Bearer ' + token;
+  loadKeys(); loadConvs(); loadPresets();
+}
+
+function headers(json = false) {
+  const h = { 'Authorization': token };
+  if (json) h['Content-Type'] = 'application/json';
+  return h;
+}
+
+// -- API helpers --
+async function api(method, path, body) {
+  const opts = { method, headers: headers(!!body) };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(BASE + path, opts);
+  return res.json();
+}
+
+// -- API Keys --
+async function loadKeys() {
+  const r = await api('GET', '/chat/api-keys');
+  keys = r.data || [];
+  renderKeys();
+}
+
+function renderKeys() {
+  const el = document.getElementById('key-list');
+  el.innerHTML = keys.map(k => `
+    <div class="list-item">
+      <span>${k.name} <span style="color:var(--nord3);font-size:11px">${k.provider} ${k.api_key_mask}</span></span>
+      <span class="del" onclick="event.stopPropagation();deleteKey(${k.id})">DEL</span>
+    </div>
+  `).join('');
+}
+
+function showAddKeyModal() {
+  showModal(`
+    <h3>Add API Key</h3>
+    <div class="field"><label>Provider</label>
+      <select id="m-provider" onchange="toggleBaseUrl()">
+        <option value="openai">OpenAI</option>
+        <option value="anthropic">Anthropic</option>
+        <option value="gemini">Gemini</option>
+        <option value="custom">Custom</option>
+      </select>
+    </div>
+    <div class="field"><label>Name</label><input id="m-name" placeholder="My Key"></div>
+    <div class="field"><label>API Key</label><input id="m-apikey" placeholder="sk-..."></div>
+    <div class="field" id="m-baseurl-field" style="display:none"><label>Base URL</label><input id="m-baseurl" placeholder="https://api.example.com"></div>
+    <div class="btns">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="doAddKey()">Create</button>
+    </div>
+  `);
+}
+
+function toggleBaseUrl() {
+  document.getElementById('m-baseurl-field').style.display = document.getElementById('m-provider').value === 'custom' ? '' : 'none';
+}
+
+async function doAddKey() {
+  const body = {
+    provider: document.getElementById('m-provider').value,
+    name: document.getElementById('m-name').value,
+    api_key: document.getElementById('m-apikey').value,
+    base_url: document.getElementById('m-baseurl').value || ''
+  };
+  await api('POST', '/chat/api-keys', body);
+  closeModal(); loadKeys();
+}
+
+async function deleteKey(id) {
+  await api('DELETE', `/chat/api-keys/${id}`);
+  loadKeys();
+}
+
+// -- Presets --
+async function loadPresets() {
+  const r = await api('GET', '/chat/presets');
+  renderPresets(r.data || []);
+}
+
+function renderPresets(presets) {
+  const el = document.getElementById('preset-list');
+  el.innerHTML = presets.map(p => `
+    <div class="list-item" onclick="applyPreset('${p.content.replace(/'/g, "\\'")}')">
+      <span>${p.name}</span>
+      <span class="del" onclick="event.stopPropagation();deletePreset(${p.id})">DEL</span>
+    </div>
+  `).join('');
+}
+
+function showAddPresetModal() {
+  showModal(`
+    <h3>Add Preset</h3>
+    <div class="field"><label>Name</label><input id="m-preset-name" placeholder="Preset name"></div>
+    <div class="field"><label>System Prompt</label><textarea id="m-preset-content" placeholder="You are a helpful assistant..."></textarea></div>
+    <div class="btns">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="doAddPreset()">Create</button>
+    </div>
+  `);
+}
+
+async function doAddPreset() {
+  await api('POST', '/chat/presets', {
+    name: document.getElementById('m-preset-name').value,
+    content: document.getElementById('m-preset-content').value
+  });
+  closeModal(); loadPresets();
+}
+
+async function deletePreset(id) {
+  await api('DELETE', `/chat/presets/${id}`);
+  loadPresets();
+}
+
+function applyPreset(content) {
+  const sp = document.getElementById('m-sysprompt');
+  if (sp) sp.value = content;
+}
+
+// -- Conversations --
+async function loadConvs() {
+  const r = await api('GET', '/chat/conversations');
+  renderConvs(r.data || []);
+}
+
+function renderConvs(convs) {
+  const el = document.getElementById('conv-list');
+  el.innerHTML = convs.map(c => `
+    <div class="list-item ${c.conv_id === currentConvId ? 'active' : ''}" onclick="openConv('${c.conv_id}')">
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.title || 'Untitled'}</span>
+      <span class="del" onclick="event.stopPropagation();deleteConv('${c.conv_id}')">DEL</span>
+    </div>
+  `).join('');
+}
+
+function showNewConvModal() {
+  const keyOpts = keys.map(k => `<option value="${k.id}">${k.name} (${k.provider})</option>`).join('');
+  showModal(`
+    <h3>New Conversation</h3>
+    <div class="field"><label>API Key</label><select id="m-keyid">${keyOpts}</select></div>
+    <div class="field"><label>Model</label><input id="m-model" placeholder="deepseek-chat / gpt-4o / ..."></div>
+    <div class="field"><label>Title (optional)</label><input id="m-title" placeholder=""></div>
+    <div class="field"><label>System Prompt (optional)</label><textarea id="m-sysprompt" placeholder="You are..."></textarea></div>
+    <div class="btns">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="doNewConv()">Create</button>
+    </div>
+  `);
+}
+
+async function doNewConv() {
+  const body = {
+    api_key_id: Number(document.getElementById('m-keyid').value),
+    model: document.getElementById('m-model').value,
+    title: document.getElementById('m-title').value,
+    system_prompt: document.getElementById('m-sysprompt').value
+  };
+  const r = await api('POST', '/chat/conversations', body);
+  closeModal();
+  if (r.data) { await loadConvs(); openConv(r.data.conv_id); }
+}
+
+async function openConv(convId) {
+  currentConvId = convId;
+  const r = await api('GET', `/chat/conversations/${convId}`);
+  if (!r.data) return;
+  currentConv = r.data;
+  document.getElementById('conv-title').textContent = currentConv.title || 'Untitled';
+  document.getElementById('conv-model').textContent = currentConv.model;
+  document.getElementById('send-btn').disabled = false;
+
+  const el = document.getElementById('messages');
+  const msgs = currentConv.messages || [];
+  if (msgs.length === 0) {
+    el.innerHTML = '<div class="placeholder">No messages yet. Say something!</div>';
+  } else {
+    el.innerHTML = msgs.map(m => `<div class="msg ${m.role}">${escapeHtml(m.content)}</div>`).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+  loadConvs();
+}
+
+async function deleteConv(convId) {
+  await api('DELETE', `/chat/conversations/${convId}`);
+  if (currentConvId === convId) {
+    currentConvId = null; currentConv = null;
+    document.getElementById('conv-title').textContent = 'Select a conversation';
+    document.getElementById('conv-model').textContent = '';
+    document.getElementById('messages').innerHTML = '<div class="placeholder">Choose or create a conversation to start chatting</div>';
+    document.getElementById('send-btn').disabled = true;
+  }
+  loadConvs();
+}
+
+// -- Send Message (SSE) --
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+async function sendMessage() {
+  if (!currentConvId || streaming) return;
+  const input = document.getElementById('msg-input');
+  const content = input.value.trim();
+  if (!content) return;
+
+  input.value = '';
+  streaming = true;
+  document.getElementById('send-btn').disabled = true;
+
+  const el = document.getElementById('messages');
+  // Clear placeholder
+  if (el.querySelector('.placeholder')) el.innerHTML = '';
+
+  // User bubble
+  const userDiv = document.createElement('div');
+  userDiv.className = 'msg user';
+  userDiv.textContent = content;
+  el.appendChild(userDiv);
+
+  // Assistant bubble
+  const assistDiv = document.createElement('div');
+  assistDiv.className = 'msg assistant';
+  assistDiv.textContent = '';
+  el.appendChild(assistDiv);
+  el.scrollTop = el.scrollHeight;
+
+  const body = {
+    content,
+    temperature: parseFloat(document.getElementById('param-temp').value) || 0.7,
+    top_p: parseFloat(document.getElementById('param-topp').value) || 1,
+    max_tokens: parseInt(document.getElementById('param-maxtok').value) || 4096
+  };
+
+  try {
+    const resp = await fetch(BASE + `/chat/conversations/${currentConvId}/messages`, {
+      method: 'POST',
+      headers: headers(true),
+      body: JSON.stringify(body)
+    });
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6);
+        if (data === '[DONE]') continue;
+
+        try {
+          const obj = JSON.parse(data);
+          if (obj.error) {
+            assistDiv.className = 'msg error';
+            assistDiv.textContent = obj.error;
+          } else if (obj.delta) {
+            assistDiv.textContent += obj.delta;
+            el.scrollTop = el.scrollHeight;
+          }
+        } catch {}
+      }
+    }
+  } catch (err) {
+    assistDiv.className = 'msg error';
+    assistDiv.textContent = 'Network error: ' + err.message;
+  }
+
+  streaming = false;
+  document.getElementById('send-btn').disabled = false;
+  // generateTitle is an async goroutine on the backend, delay refresh to pick up the new title
+  loadConvs();
+  setTimeout(async () => {
+    await loadConvs();
+    if (currentConvId) {
+      const r = await api('GET', `/chat/conversations/${currentConvId}`);
+      if (r.data && r.data.title) {
+        document.getElementById('conv-title').textContent = r.data.title;
+      }
+    }
+  }, 3000);
+}
+
+// -- Modal helpers --
+function showModal(html) {
+  document.getElementById('modal-container').innerHTML = `<div class="modal-overlay" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()">${html}</div></div>`;
+}
+function closeModal() { document.getElementById('modal-container').innerHTML = ''; }
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>

@@ -23,6 +23,7 @@ type Config struct {
 	Deduplication DeduplicationConfig `yaml:"deduplication"`
 	GRPCClient    GRPCClientConfig    `yaml:"grpcclient"`
 	RabbitMQ      RabbitMQConfig      `yaml:"rabbitmq"`
+	Chat          ChatConfig          `yaml:"chat"`
 }
 
 // ServerConfig 定义主服务配置
@@ -97,6 +98,12 @@ func (mc MysqlConfig) DsnString() string {
 // URLString 返回 RabbitMQ 连接 URL
 func (rc RabbitMQConfig) URLString() string {
 	return fmt.Sprintf("amqp://%s:%s@%s:%d%s", rc.User, rc.Password, rc.Host, rc.Port, rc.VHost)
+}
+
+// ChatConfig 定义 AI 对话相关配置
+type ChatConfig struct {
+	EncryptionKey      string `yaml:"encryptionkey"`
+	MaxMessagesPerConv int    `yaml:"maxmessagesperconv"`
 }
 
 func init() {

@@ -6,13 +6,13 @@ server:
 mysql:
   host: 127.0.0.1
   port: 3306
-  user: ainexus
-  pass: AiNexus@123456
+  user: root
+  pass: whx
   database: ai_nexus
 
 redis:
   addr: 127.0.0.1:6379
-  password: ""
+  password: "whx"
   db: 0
 
 ratelimit:
@@ -32,3 +32,7 @@ rabbitmq:
   user: guest
   password: guest
   vhost: /
+
+chat:
+  encryptionkey: "f97c463636cc9f450bd568d93df7c4e9835c276abcd13118670fd144365fdb22"
+  maxmessagesperconv: 200

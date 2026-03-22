@@ -1,6 +1,6 @@
 ## 模型模块
 ### 创建新模型
-POST http://127.0.0.1:9000/image-generation/model/create
+POST http://127.0.0.1:8000/image-generation/model/create
 Content-Type: application/json
 
 {
@@ -24,7 +24,7 @@ Content-Type: application/json
 }
 
 ### 批量创建模型
-POST http://127.0.0.1:9000/image-generation/model/batchcreate
+POST http://127.0.0.1:8000/image-generation/model/batchcreate
 Content-Type: application/json
 
 {
@@ -71,13 +71,13 @@ Content-Type: application/json
 }
 
 ### 删除模型
-DELETE http://127.0.0.1:9000/image-generation/model/delete?ids=flux.1-dev
+DELETE http://127.0.0.1:8000/image-generation/model/delete?ids=flux.1-dev
 
 ### 批量删除模型
-DELETE http://127.0.0.1:9000/image-generation/model/delete?ids=hunyuanimage-3.0,flux.1-dev
+DELETE http://127.0.0.1:8000/image-generation/model/delete?ids=hunyuanimage-3.0,flux.1-dev
 
 ### 局部数据更新
-PUT http://127.0.0.1:9000/image-generation/model/update
+PUT http://127.0.0.1:8000/image-generation/model/update
 Content-Type: application/json
 
 {
@@ -90,56 +90,56 @@ Content-Type: application/json
 }
 
 ### 获取模型信息
-GET http://127.0.0.1:9000/image-generation/model/info?model_id=qwen-image
+GET http://127.0.0.1:8000/image-generation/model/info?model_id=qwen-image
 
 ### 查询模型列表 - 基础查询（无条件，默认分页）
-GET http://127.0.0.1:9000/image-generation/model/query
+GET http://127.0.0.1:8000/image-generation/model/query
 
 ### 查询模型列表 - 指定分页参数
-GET http://127.0.0.1:9000/image-generation/model/query?pageIndex=0&pageSize=10
+GET http://127.0.0.1:8000/image-generation/model/query?pageIndex=0&pageSize=10
 
 ### 查询模型列表 - 按模型类型查询
-GET http://127.0.0.1:9000/image-generation/model/query?model_type=text2img
+GET http://127.0.0.1:8000/image-generation/model/query?model_type=text2img
 
 ### 查询模型列表 - 按提供商查询
-GET http://127.0.0.1:9000/image-generation/model/query?provider=modelscope
+GET http://127.0.0.1:8000/image-generation/model/query?provider=modelscope
 
 ### 查询模型列表 - 查询启用的模型
-GET http://127.0.0.1:9000/image-generation/model/query?is_active=true
+GET http://127.0.0.1:8000/image-generation/model/query?is_active=true
 
 ### 查询模型列表 - 查询推荐模型
-GET http://127.0.0.1:9000/image-generation/model/query?is_recommended=true
+GET http://127.0.0.1:8000/image-generation/model/query?is_recommended=true
 
 ### 查询模型列表 - 查询未推荐的模型
-GET http://127.0.0.1:9000/image-generation/model/query?is_recommended=false
+GET http://127.0.0.1:8000/image-generation/model/query?is_recommended=false
 
 ### 查询模型列表 - 按宽度查询（查询支持宽度 >= 1024 的模型）
-GET http://127.0.0.1:9000/image-generation/model/query?width=1024
+GET http://127.0.0.1:8000/image-generation/model/query?width=1024
 
 ### 查询模型列表 - 按高度查询（查询支持高度 >= 1024 的模型）
-GET http://127.0.0.1:9000/image-generation/model/query?height=1024
+GET http://127.0.0.1:8000/image-generation/model/query?height=1024
 
 ### 查询模型列表 - 按步数查询（查询支持 20 步的模型）
-GET http://127.0.0.1:9000/image-generation/model/query?steps=20
+GET http://127.0.0.1:8000/image-generation/model/query?steps=20
 
 ### 查询模型列表 - 按创建时间查询（查询 2025-11-14 之后创建的）
-GET http://127.0.0.1:9000/image-generation/model/query?create_at=2025-11-14
+GET http://127.0.0.1:8000/image-generation/model/query?create_at=2025-11-14
 
 ### 查询模型列表 - 全文搜索（在 model_name/description/tags 中搜索）
-GET http://127.0.0.1:9000/image-generation/model/query?q=中文
+GET http://127.0.0.1:8000/image-generation/model/query?q=中文
 
 ### 查询模型列表 - 组合条件查询 1（推荐的且启用的模型）
-GET http://127.0.0.1:9000/image-generation/model/query?is_recommended=true&is_active=true
+GET http://127.0.0.1:8000/image-generation/model/query?is_recommended=true&is_active=true
 
 ### 查询模型列表 - 组合条件查询 2（支持1024分辨率的推荐模型）
-GET http://127.0.0.1:9000/image-generation/model/query?width=1024&height=1024&is_recommended=true
+GET http://127.0.0.1:8000/image-generation/model/query?width=1024&height=1024&is_recommended=true
 
 ### 查询模型列表 - 组合条件查询 3（modelscope 提供的中文渲染模型）
-GET http://127.0.0.1:9000/image-generation/model/query?provider=modelscope&q=中文
+GET http://127.0.0.1:8000/image-generation/model/query?provider=modelscope&q=中文
 
 ### 查询模型列表 - 组合条件查询 4（带分页的复杂查询）
-GET http://127.0.0.1:9000/image-generation/model/query?is_active=true&width=1024&pageIndex=0&pageSize=5
+GET http://127.0.0.1:8000/image-generation/model/query?is_active=true&width=1024&pageIndex=0&pageSize=5
 
 ### 查询模型列表 - 按第三方模型ID查询
-GET http://127.0.0.1:9000/image-generation/model/query?third_party_model_id=Qwen/Qwen-Image
+GET http://127.0.0.1:8000/image-generation/model/query?third_party_model_id=Qwen/Qwen-Image
 

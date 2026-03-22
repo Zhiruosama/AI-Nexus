@@ -6,6 +6,7 @@ import (
 
 	"github.com/Zhiruosama/ai_nexus/configs"
 	"github.com/Zhiruosama/ai_nexus/internal/middleware"
+	routes_chat "github.com/Zhiruosama/ai_nexus/internal/routes/chat"
 	routes_demo "github.com/Zhiruosama/ai_nexus/internal/routes/demo"
 	routes_image_generation "github.com/Zhiruosama/ai_nexus/internal/routes/image-generation"
 	routes_user "github.com/Zhiruosama/ai_nexus/internal/routes/user"
@@ -32,6 +33,7 @@ func Run() {
 	routes_demo.InitDemoRoutes(route)
 	routes_user.InitUserRoutes(route)
 	routes_image_generation.InitImageGenerationRoutes(route)
+	routes_chat.InitChatRoutes(route)
 
 	// 启动 app
 	log.Printf("[Server] Server start on: %s:%d\n", configs.GlobalConfig.Server.Host, configs.GlobalConfig.Server.Port)

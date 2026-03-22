@@ -144,3 +144,54 @@ CREATE TABLE dead_letter_tasks (
   INDEX idx_user_id (user_id),
   INDEX idx_created_at (created_at)
 ) COMMENT='死信任务记录表';
+
+CREATE TABLE IF NOT EXISTS `user_api_keys` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `user_uuid` CHAR(36) NOT NULL COMMENT '用户UUID',
+  `provider` VARCHAR(32) NOT NULL COMMENT 'openai / anthropic / gemini / custom',
+  `name` VARCHAR(64) NOT NULL COMMENT '用户自定义名称',
+  `is_active` BOOLEAN DEFAULT TRUE COMMENT '是否启用',
+  `base_url` VARCHAR(512) DEFAULT '' COMMENT '自定义端点',
+  `api_key_enc` VARBINARY(512) NOT NULL COMMENT 'AES-GCM 加密后的 API Key',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  INDEX `idx_user_provider` (`user_uuid`, `provider`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户 API Key 表';
+
+CREATE TABLE IF NOT EXISTS `conversations` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `conv_id` CHAR(36) NOT NULL UNIQUE COMMENT '对话UUID',
+  `user_uuid` CHAR(36) NOT NULL COMMENT '用户UUID',
+  `api_key_id` BIGINT UNSIGNED NOT NULL COMMENT '使用的 API Key ID',
+  `title` VARCHAR(128) DEFAULT '' COMMENT '对话标题',
+  `model` VARCHAR(64) NOT NULL COMMENT '模型名',
+  `system_prompt` TEXT COMMENT '系统预设',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  INDEX `idx_user_updated` (`user_uuid`, `updated_at` DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='对话表';
+
+CREATE TABLE IF NOT EXISTS `conversation_messages` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `conv_id` CHAR(36) NOT NULL COMMENT '对话UUID',
+  `role` ENUM('system','user','assistant') NOT NULL COMMENT '消息角色',
+  `content` TEXT NOT NULL COMMENT '消息内容',
+  `prompt_tokens` INT UNSIGNED DEFAULT 0 COMMENT '输入 token 数',
+  `completion_tokens` INT UNSIGNED DEFAULT 0 COMMENT '输出 token 数',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  INDEX `idx_conv_created` (`conv_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='对话消息表';
+
+CREATE TABLE IF NOT EXISTS `chat_presets` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `user_uuid` CHAR(36) NOT NULL COMMENT '用户UUID',
+  `name` VARCHAR(64) NOT NULL COMMENT '预设名称',
+  `content` TEXT NOT NULL COMMENT 'System prompt 内容',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  INDEX `idx_user_uuid` (`user_uuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='对话预设模板表';
