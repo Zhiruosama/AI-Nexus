@@ -114,7 +114,7 @@ func (d *DAO) GetConversationByID(_ *gin.Context, convID, userUUID string) (*cha
 }
 
 // DeleteConversation 删除对话
-func (d *DAO) DeleteConversation(ctx *gin.Context, convID, userUUID string) error {
+func (d *DAO) DeleteConversation(_ *gin.Context, convID, userUUID string) error {
 	tx := db.GlobalDB.Begin()
 	tx.Where("conv_id = ?", convID).Delete(&chat_do.TableConversationMessageDO{})
 	result := tx.Where("conv_id = ? AND user_uuid = ?", convID, userUUID).Delete(&chat_do.TableConversationDO{})
@@ -126,7 +126,7 @@ func (d *DAO) DeleteConversation(ctx *gin.Context, convID, userUUID string) erro
 }
 
 // UpdateConversationTitle 更新对话标题
-func (d *DAO) UpdateConversationTitle(ctx *gin.Context, convID, userUUID, title string) error {
+func (d *DAO) UpdateConversationTitle(_ *gin.Context, convID, userUUID, title string) error {
 	result := db.GlobalDB.Model(&chat_do.TableConversationDO{}).Where("conv_id = ? AND user_uuid = ?", convID, userUUID).Update("title", title)
 	if result.Error != nil {
 		return result.Error
