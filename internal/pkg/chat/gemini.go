@@ -62,8 +62,10 @@ type geminiGenerationConfig struct {
 }
 
 type geminiStreamResponse struct {
-	Candidates    []geminiCandidate    `json:"candidates"`
-	UsageMetadata *geminiUsageMetadata `json:"usageMetadata,omitempty"`
+	Candidates     []geminiCandidate     `json:"candidates"`
+	UsageMetadata  *geminiUsageMetadata  `json:"usageMetadata,omitempty"`
+	PromptFeedback *geminiPromptFeedback `json:"promptFeedback,omitempty"`
+	Error          *geminiAPIError       `json:"error,omitempty"`
 }
 
 type geminiCandidate struct {
@@ -74,6 +76,17 @@ type geminiCandidate struct {
 type geminiUsageMetadata struct {
 	PromptTokenCount     int `json:"promptTokenCount"`
 	CandidatesTokenCount int `json:"candidatesTokenCount"`
+}
+
+type geminiPromptFeedback struct {
+	BlockReason        string `json:"blockReason,omitempty"`
+	BlockReasonMessage string `json:"blockReasonMessage,omitempty"`
+}
+
+type geminiAPIError struct {
+	Code    int    `json:"code,omitempty"`
+	Message string `json:"message,omitempty"`
+	Status  string `json:"status,omitempty"`
 }
 
 // ChatStream 发起流式对话
@@ -170,6 +183,23 @@ func (p *GeminiProvider) readSSE(ctx context.Context, body io.Reader, ch chan<- 
 		var resp geminiStreamResponse
 		if err := json.Unmarshal([]byte(data), &resp); err != nil {
 			ch <- StreamChunk{Err: fmt.Errorf("unmarshal SSE: %w", err)}
+			return
+		}
+
+		if resp.Error != nil {
+			if resp.Error.Status != "" {
+				ch <- StreamChunk{Err: fmt.Errorf("gemini %s(%d): %s", resp.Error.Status, resp.Error.Code, resp.Error.Message)}
+			} else {
+				ch <- StreamChunk{Err: fmt.Errorf("gemini error(%d): %s", resp.Error.Code, resp.Error.Message)}
+			}
+			return
+		}
+		if resp.PromptFeedback != nil && resp.PromptFeedback.BlockReason != "" && len(resp.Candidates) == 0 {
+			if resp.PromptFeedback.BlockReasonMessage != "" {
+				ch <- StreamChunk{Err: fmt.Errorf("gemini blocked: %s (%s)", resp.PromptFeedback.BlockReason, resp.PromptFeedback.BlockReasonMessage)}
+			} else {
+				ch <- StreamChunk{Err: fmt.Errorf("gemini blocked: %s", resp.PromptFeedback.BlockReason)}
+			}
 			return
 		}
 
