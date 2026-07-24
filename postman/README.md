@@ -4,8 +4,10 @@ Import both JSON files into Postman, select the **AI-Nexus Local** environment,
 then run a login request. Its test script saves the returned `token` as
 `jwt_token`, which supplies the Collection-level Bearer authentication.
 
-The environment defaults to the current WSL LAN address. Use
-`http://localhost:8000` instead when Postman runs on the same Windows machine.
+The environment defaults to `http://localhost:8000`, which is the correct
+address when Postman runs on the same Windows machine as WSL. A Postman client
+on another LAN device needs a separate Windows firewall/networking rule; do
+not assume the transient WSL address is directly reachable.
 
 There are 35 application endpoints in the route registrations: 34 HTTP
 endpoints and one WebSocket endpoint. The Collection has 36 HTTP request
