@@ -1,0 +1,41 @@
+server:
+  host: "${SERVER_HOST}"
+  public: "${SERVER_PUBLIC}"
+  port: ${SERVER_PORT}
+
+mysql:
+  host: "${MYSQL_HOST}"
+  port: ${MYSQL_PORT}
+  user: "${MYSQL_USER}"
+  pass: "${MYSQL_PASSWORD}"
+  database: "${MYSQL_DATABASE}"
+
+redis:
+  addr: "${REDIS_ADDR}"
+  password: "${REDIS_PASSWORD}"
+  db: ${REDIS_DB}
+
+ratelimit:
+  limitmax: 100
+  window: 1m
+
+idempotency:
+  lockduration: 30s
+
+deduplication:
+  lockduration: 5s
+
+grpcclient:
+  serveraddress: "${GRPC_SERVER_ADDRESS}"
+  defaulttimeout: ${GRPC_DEFAULT_TIMEOUT}
+
+rabbitmq:
+  host: "${RABBITMQ_HOST}"
+  port: ${RABBITMQ_PORT}
+  user: "${RABBITMQ_USER}"
+  password: "${RABBITMQ_PASSWORD}"
+  vhost: "${RABBITMQ_VHOST}"
+
+chat:
+  encryptionkey: "${CHAT_ENCRYPTION_KEY}"
+  maxmessagesperconv: 100

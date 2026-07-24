@@ -1,0 +1,107 @@
+{
+  "info": {
+    "_postman_id": "2c07c3c0-8f43-4fb1-9a68-74f7fad5d781",
+    "name": "AI-Nexus Local API",
+    "description": "Generated from the Gin route registrations and request DTOs. It contains 34 HTTP endpoints. Import AI-Nexus.local.postman_environment.json as well. Login stores response.token into jwt_token automatically. Model-management endpoints are currently unauthenticated in the application; do not expose them publicly.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{jwt_token}}", "type": "string"}]},
+  "item": [
+    {
+      "name": "Demo",
+      "item": [
+        {"name": "Get demo message", "request": {"method": "GET", "url": "{{base_url}}/demo/get-message?id=1"}},
+        {"name": "[Danger] Trigger recovery middleware", "request": {"method": "GET", "url": "{{base_url}}/demo/panic-test"}}
+      ]
+    },
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "Send verification code (register/reset)",
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/x-www-form-urlencoded"}], "body": {"mode": "urlencoded", "urlencoded": [{"key": "email", "value": "{{email}}", "type": "text"}, {"key": "purpose", "value": "1", "description": "1=register, 2=reset password; current implementation rejects 3", "type": "text"}]}, "url": "{{base_url}}/user/send-code"}
+        },
+        {
+          "name": "Register", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"nickname\": \"{{nickname}}\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"repeat_password\": \"{{password}}\",\n  \"verify_code\": \"{{verify_code}}\",\n  \"purpose\": \"1\"\n}"}, "url": "{{base_url}}/user/register"}
+        },
+        {
+          "name": "Login (email + password)", "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": ["const body = pm.response.json();", "if (body.token) pm.environment.set('jwt_token', body.token);"]}}], "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"}, "url": "{{base_url}}/user/login"}
+        },
+        {
+          "name": "Login (nickname + password)", "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": ["const body = pm.response.json();", "if (body.token) pm.environment.set('jwt_token', body.token);"]}}], "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"nickname\": \"{{nickname}}\",\n  \"password\": \"{{password}}\"\n}"}, "url": "{{base_url}}/user/login"}
+        },
+        {
+          "name": "Login (email + verification code)", "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": ["const body = pm.response.json();", "if (body.token) pm.environment.set('jwt_token', body.token);"]}}], "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"verify_code\": \"{{verify_code}}\",\n  \"purpose\": \"3\"\n}"}, "url": "{{base_url}}/user/login"}
+        },
+        {"name": "Logout", "request": {"method": "GET", "url": "{{base_url}}/user/logout"}},
+        {"name": "Get current user", "request": {"method": "GET", "url": "{{base_url}}/user/get-userinfo"}},
+        {"name": "List users (currently unauthenticated)", "request": {"method": "GET", "url": "{{base_url}}/user/getall-userinfo?pageIndex=0&pageSize=10"}},
+        {
+          "name": "Update user profile", "request": {"method": "PUT", "body": {"mode": "formdata", "formdata": [{"key": "nickname", "value": "{{nickname}}", "type": "text"}, {"key": "sha256", "value": "", "description": "Required when uploading avatar in current service implementation", "type": "text"}, {"key": "avatar", "type": "file", "src": ""}]}, "url": "{{base_url}}/user/update-userinfo"}
+        },
+        {
+          "name": "Reset password", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"verify_code\": \"{{verify_code}}\",\n  \"new_password\": \"{{password}}\",\n  \"repeat_new_password\": \"{{password}}\",\n  \"purpose\": \"2\"\n}"}, "url": "{{base_url}}/user/reset-password"}
+        },
+        {"name": "Delete current user", "request": {"method": "DELETE", "url": "{{base_url}}/user/destroy"}}
+      ]
+    },
+    {
+      "name": "Image generation - Models (currently unauthenticated)",
+      "item": [
+        {
+          "name": "Create model", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"model_id\": \"{{model_id}}\",\n  \"model_name\": \"Test Text-to-Image Model\",\n  \"model_type\": \"text2img\",\n  \"provider\": \"modelscope\",\n  \"description\": \"Local test model configuration\",\n  \"tags\": \"test\",\n  \"sort_order\": 1,\n  \"is_active\": true,\n  \"is_recommended\": false,\n  \"third_party_model_id\": \"replace-with-provider-model-id\",\n  \"base_url\": \"https://api-inference.modelscope.cn/\",\n  \"default_width\": 1024,\n  \"default_height\": 1024,\n  \"max_width\": 1024,\n  \"max_height\": 1024,\n  \"min_steps\": 20,\n  \"max_steps\": 50\n}"}, "url": "{{base_url}}/image-generation/model/create"}
+        },
+        {
+          "name": "Batch create models", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"models\": [\n    {\n      \"model_id\": \"{{model_id}}\",\n      \"model_name\": \"Test Text-to-Image Model\",\n      \"model_type\": \"text2img\",\n      \"provider\": \"modelscope\",\n      \"description\": \"Local test model configuration\",\n      \"tags\": \"test\",\n      \"third_party_model_id\": \"replace-with-provider-model-id\",\n      \"base_url\": \"https://api-inference.modelscope.cn/\"\n    }\n  ]\n}"}, "url": "{{base_url}}/image-generation/model/batchcreate"}
+        },
+        {"name": "Delete model(s)", "request": {"method": "DELETE", "url": "{{base_url}}/image-generation/model/delete?ids={{model_id}}"}},
+        {
+          "name": "Update model", "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"model_id\": \"{{model_id}}\",\n  \"model_name\": \"Updated Test Model\",\n  \"is_active\": true\n}"}, "url": "{{base_url}}/image-generation/model/update"}
+        },
+        {"name": "Get model details", "request": {"method": "GET", "url": "{{base_url}}/image-generation/model/info?model_id={{model_id}}"}},
+        {"name": "Query models", "request": {"method": "GET", "url": "{{base_url}}/image-generation/model/query?pageIndex=0&pageSize=20&model_type=text2img&provider=modelscope&is_active=true"}}
+      ]
+    },
+    {
+      "name": "Image generation - Tasks (JWT required)",
+      "item": [
+        {
+          "name": "Create text-to-image task", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"prompt\": \"A small robot reading a book in a library\",\n  \"negative_prompt\": \"\",\n  \"model_id\": \"{{model_id}}\",\n  \"width\": 1024,\n  \"height\": 1024,\n  \"num_inference_steps\": 20,\n  \"guidance_scale\": 7.5\n}"}, "url": "{{base_url}}/image-generation/image/text2img"}
+        },
+        {
+          "name": "Create image-to-image task", "request": {"method": "POST", "body": {"mode": "formdata", "formdata": [{"key": "prompt", "value": "Make the image look like a watercolor painting", "type": "text"}, {"key": "model_id", "value": "{{model_id}}", "type": "text"}, {"key": "strength", "value": "0.8", "type": "text"}, {"key": "width", "value": "1024", "type": "text"}, {"key": "height", "value": "1024", "type": "text"}, {"key": "num_inference_steps", "value": "20", "type": "text"}, {"key": "guidance_scale", "value": "7.5", "type": "text"}, {"key": "sha256", "value": "replace-with-uploaded-file-sha256", "type": "text"}, {"key": "input_image", "type": "file", "src": ""}]}, "url": "{{base_url}}/image-generation/image/img2img"}
+        },
+        {"name": "Cancel task", "request": {"method": "PUT", "url": "{{base_url}}/image-generation/image/cancel?task_id={{task_id}}"}}
+      ]
+    },
+    {
+      "name": "Chat - API keys (JWT required)",
+      "item": [
+        {"name": "List API keys", "request": {"method": "GET", "url": "{{base_url}}/chat/api-keys"}},
+        {"name": "Create API key", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"provider\": \"custom\",\n  \"name\": \"Local test provider\",\n  \"base_url\": \"https://api.example.com\",\n  \"api_key\": \"{{provider_api_key}}\"\n}"}, "url": "{{base_url}}/chat/api-keys"}},
+        {"name": "Update API key", "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"name\": \"Updated local test provider\"\n}"}, "url": "{{base_url}}/chat/api-keys/{{api_key_id}}"}},
+        {"name": "Delete API key", "request": {"method": "DELETE", "url": "{{base_url}}/chat/api-keys/{{api_key_id}}"}}
+      ]
+    },
+    {
+      "name": "Chat - Conversations (JWT required)",
+      "item": [
+        {"name": "List conversations", "request": {"method": "GET", "url": "{{base_url}}/chat/conversations?pageIndex=0&pageSize=20"}},
+        {"name": "Create conversation", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"api_key_id\": {{api_key_id}},\n  \"title\": \"My first conversation\",\n  \"model\": \"deepseek-chat\",\n  \"system_prompt\": \"You are a helpful assistant.\"\n}"}, "url": "{{base_url}}/chat/conversations"}},
+        {"name": "Get conversation", "request": {"method": "GET", "url": "{{base_url}}/chat/conversations/{{conv_id}}"}},
+        {"name": "Delete conversation", "request": {"method": "DELETE", "url": "{{base_url}}/chat/conversations/{{conv_id}}"}},
+        {"name": "Update conversation title", "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"title\": \"Updated conversation title\"\n}"}, "url": "{{base_url}}/chat/conversations/{{conv_id}}/title"}},
+        {"name": "Send message (SSE)", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Accept", "value": "text/event-stream"}], "body": {"mode": "raw", "raw": "{\n  \"content\": \"Hello!\",\n  \"temperature\": 0.7,\n  \"top_p\": 1,\n  \"max_tokens\": 512\n}"}, "url": "{{base_url}}/chat/conversations/{{conv_id}}/messages"}}
+      ]
+    },
+    {
+      "name": "Chat - Presets (JWT required)",
+      "item": [
+        {"name": "Create preset", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"name\": \"Concise assistant\",\n  \"content\": \"Answer clearly and concisely.\"\n}"}, "url": "{{base_url}}/chat/presets"}},
+        {"name": "List presets", "request": {"method": "GET", "url": "{{base_url}}/chat/presets"}},
+        {"name": "Update preset", "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"name\": \"Updated concise assistant\"\n}"}, "url": "{{base_url}}/chat/presets/{{preset_id}}"}},
+        {"name": "Delete preset", "request": {"method": "DELETE", "url": "{{base_url}}/chat/presets/{{preset_id}}"}}
+      ]
+    }
+  ]
+}

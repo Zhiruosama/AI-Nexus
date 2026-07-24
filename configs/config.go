@@ -108,7 +108,11 @@ type ChatConfig struct {
 
 func init() {
 	var err error
-	GlobalConfig, err = loadConfig("configs/config.yaml")
+	configPath := os.Getenv("CONFIG_PATH")
+	if configPath == "" {
+		configPath = "configs/config.yaml"
+	}
+	GlobalConfig, err = loadConfig(configPath)
 
 	if err != nil {
 		panic(fmt.Sprintf("[ERROR] Failed to load config: %s\n", err.Error()))
@@ -121,6 +125,11 @@ func loadConfig(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Allow local, non-committed configuration to refer to environment variables.
+	// This keeps credentials out of tracked YAML while preserving the existing
+	// configuration structure.
+	data = []byte(os.ExpandEnv(string(data)))
 
 	var config Config
 	err = yaml.Unmarshal(data, &config)
