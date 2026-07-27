@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	internalauth "github.com/Zhiruosama/ai_nexus/internal/auth"
 	user_dao "github.com/Zhiruosama/ai_nexus/internal/dao/user"
 	user_do "github.com/Zhiruosama/ai_nexus/internal/domain/do/user"
 	user_dto "github.com/Zhiruosama/ai_nexus/internal/domain/dto/user"
@@ -23,6 +24,7 @@ import (
 	"github.com/Zhiruosama/ai_nexus/internal/pkg"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/logger"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/rdb"
+	"github.com/Zhiruosama/ai_nexus/internal/pkg/session"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -30,13 +32,15 @@ import (
 
 // Service 对应 user 模块的 Service 结构
 type Service struct {
-	UserDao *user_dao.DAO
+	UserDao      *user_dao.DAO
+	SessionStore session.Store
 }
 
 // NewService 对应 user 模块的 Service 工厂方法
 func NewService() *Service {
 	return &Service{
-		UserDao: &user_dao.DAO{},
+		UserDao:      &user_dao.DAO{},
+		SessionStore: session.NewRedisStore(rdb.Rdb),
 	}
 }
 
@@ -131,8 +135,6 @@ func (s *Service) Register(ctx *gin.Context, dto *user_dto.RegisterRequest) erro
 
 // LoginWithNicknamePassword 用户名密码登录
 func (s *Service) LoginWithNicknamePassword(ctx *gin.Context, req *user_dto.LoginRequest, vo *user_vo.LoginVO) error {
-	rdbClient := rdb.Rdb
-	rCtx := rdb.Ctx
 	uuid, password, err := s.UserDao.GetPasswordByNickname(ctx, req.NickName)
 
 	if err != nil {
@@ -142,46 +144,24 @@ func (s *Service) LoginWithNicknamePassword(ctx *gin.Context, req *user_dto.Logi
 		return fmt.Errorf("user not exists")
 	}
 
-	_, err = rdbClient.Get(rCtx, uuid).Result()
-	if err == redis.Nil {
-		ok, errs := pkg.VerifyPassword(req.PassWord, password)
-		if errs != nil {
-			return fmt.Errorf("VerifyPassword error")
-		} else if !ok {
-			return fmt.Errorf("password error")
-		}
-
-		vo.JWTToken, errs = middleware.GenerateToken(uuid)
-		if errs != nil {
-			logger.Error(ctx, "Generate token error: %s", errs.Error())
-			return errs
-		}
-
-		_, errs = rdbClient.Set(rCtx, uuid, vo.JWTToken, 0).Result()
-		if errs != nil {
-			logger.Error(ctx, "Set token to redis error: %s", errs.Error())
-			return errs
-		}
-
-		errs = s.UserDao.UpdateLoginTime(ctx, uuid)
-		if errs != nil {
-			return errs
-		}
-
-		return nil
-	}
+	ok, err := pkg.VerifyPassword(req.PassWord, password)
 	if err != nil {
-		logger.Error(ctx, "redis get error.: %s", err.Error())
+		return fmt.Errorf("VerifyPassword error")
+	}
+	if !ok {
+		return fmt.Errorf("password error")
+	}
+
+	if err = s.UserDao.UpdateLoginTime(ctx, uuid); err != nil {
 		return err
 	}
-	return fmt.Errorf("this account is logged in")
+
+	vo.JWTToken, err = s.createSession(ctx, uuid)
+	return err
 }
 
 // LoginWithEmailPassword 邮箱密码登录
 func (s *Service) LoginWithEmailPassword(ctx *gin.Context, req *user_dto.LoginRequest, vo *user_vo.LoginVO) error {
-	rdbClient := rdb.Rdb
-	rCtx := rdb.Ctx
-
 	uuid, password, err := s.UserDao.GetPasswordByEmail(ctx, req.Email)
 	if err != nil {
 		return err
@@ -190,40 +170,20 @@ func (s *Service) LoginWithEmailPassword(ctx *gin.Context, req *user_dto.LoginRe
 		return fmt.Errorf("user not exists")
 	}
 
-	_, err = rdbClient.Get(rCtx, uuid).Result()
-	if err == redis.Nil {
-		ok, errs := pkg.VerifyPassword(req.PassWord, password)
-		if errs != nil {
-			return fmt.Errorf("VerifyPassword error")
-		} else if !ok {
-			return fmt.Errorf("password error")
-		}
-
-		vo.JWTToken, errs = middleware.GenerateToken(uuid)
-		if errs != nil {
-			logger.Error(ctx, "Generate token error: %s", errs.Error())
-			return errs
-		}
-
-		_, errs = rdbClient.Set(rCtx, uuid, vo.JWTToken, 0).Result()
-		if errs != nil {
-			logger.Error(ctx, "Set token to redis error: %s", errs.Error())
-			return errs
-		}
-
-		errs = s.UserDao.UpdateLoginTime(ctx, uuid)
-		if errs != nil {
-			return errs
-		}
-
-		return nil
+	ok, err := pkg.VerifyPassword(req.PassWord, password)
+	if err != nil {
+		return fmt.Errorf("VerifyPassword error")
+	}
+	if !ok {
+		return fmt.Errorf("password error")
 	}
 
-	if err != nil {
-		logger.Error(ctx, "redis get error.: %s", err.Error())
+	if err = s.UserDao.UpdateLoginTime(ctx, uuid); err != nil {
 		return err
 	}
-	return fmt.Errorf("this account is logged in")
+
+	vo.JWTToken, err = s.createSession(ctx, uuid)
+	return err
 }
 
 // LoginWithEmailVerifyCode 邮箱验证码登录
@@ -249,18 +209,6 @@ func (s *Service) LoginWithEmailVerifyCode(ctx *gin.Context, req *user_dto.Login
 		return fmt.Errorf("user not exists")
 	}
 
-	vo.JWTToken, err = middleware.GenerateToken(uuid)
-	if err != nil {
-		logger.Error(ctx, "Generate token error: %s", err.Error())
-		return err
-	}
-
-	_, err = rdbClient.Set(rCtx, uuid, vo.JWTToken, 0).Result()
-	if err != nil {
-		logger.Error(ctx, "Set token to redis error: %s", err.Error())
-		return err
-	}
-
 	err = s.UserDao.UpdateLoginTime(ctx, uuid)
 	if err != nil {
 		return err
@@ -271,7 +219,32 @@ func (s *Service) LoginWithEmailVerifyCode(ctx *gin.Context, req *user_dto.Login
 		return err
 	}
 
-	return nil
+	vo.JWTToken, err = s.createSession(ctx, uuid)
+	return err
+}
+
+// Logout revokes the current login session.
+func (s *Service) Logout(ctx *gin.Context) error {
+	principal, ok := middleware.CurrentPrincipal(ctx)
+	if !ok {
+		return fmt.Errorf("authenticated principal is missing")
+	}
+	return s.SessionStore.Delete(ctx.Request.Context(), principal.SessionID)
+}
+
+func (s *Service) createSession(ctx *gin.Context, userID string) (string, error) {
+	generated, err := internalauth.GenerateToken(userID)
+	if err != nil {
+		logger.Error(ctx, "Generate token error: %s", err.Error())
+		return "", err
+	}
+
+	ttl := time.Until(generated.ExpiresAt)
+	if err = s.SessionStore.Create(ctx.Request.Context(), generated.SessionID, userID, ttl); err != nil {
+		logger.Error(ctx, "Create session error: %s", err.Error())
+		return "", err
+	}
+	return generated.Value, nil
 }
 
 // GetUserInfo 获取用户信息
@@ -540,13 +513,14 @@ func (s *Service) DestroyUser(ctx *gin.Context) error {
 		return err
 	}
 
+	if sessionErr := s.SessionStore.DeleteAll(ctx.Request.Context(), uuid); sessionErr != nil {
+		logger.Error(ctx, "Revoke user sessions error: %s", sessionErr.Error())
+		return sessionErr
+	}
+
 	err = s.UserDao.DestroyUser(ctx, uuid)
 	if err != nil {
 		return err
-	}
-
-	if rdberr := rdbClient.Del(rCtx, uuid).Err(); rdberr != nil {
-		logger.Error(ctx, "Remove user form redis error: %s", rdberr.Error())
 	}
 
 	if rdberr := rdbClient.Del(rCtx, infoPrefix+uuid).Err(); rdberr != nil {
@@ -581,16 +555,6 @@ func (s *Service) ResetUserPassword(ctx *gin.Context, req *user_dto.UpdatePasswo
 		return fmt.Errorf("user not exist")
 	}
 
-	exists, err := rdbClient.Exists(rCtx, uuid).Result()
-	if err != nil {
-		logger.Error(ctx, "check user exist error: %s", err.Error())
-		return err
-	}
-
-	if exists != 0 {
-		return fmt.Errorf("user is logged in so editing is prohibited")
-	}
-
 	code, err := rdbClient.Get(rCtx, codePrefix+req.Email).Result()
 	if err != nil {
 		logger.Error(ctx, "get code from redis error: %s", err.Error())
@@ -599,12 +563,17 @@ func (s *Service) ResetUserPassword(ctx *gin.Context, req *user_dto.UpdatePasswo
 
 	if code != req.VerifyCode {
 		logger.Error(ctx, "verify code is not correct: %s", req.VerifyCode)
-		return err
+		return fmt.Errorf("verification code is incorrect")
 	}
 
 	newPasswordHash, err := pkg.HashPassword(req.NewPassWord)
 	if err != nil {
 		logger.Error(ctx, "hashPassword error: %s", err.Error())
+		return err
+	}
+
+	if err = s.SessionStore.DeleteAll(ctx.Request.Context(), uuid); err != nil {
+		logger.Error(ctx, "Revoke user sessions error: %s", err.Error())
 		return err
 	}
 
