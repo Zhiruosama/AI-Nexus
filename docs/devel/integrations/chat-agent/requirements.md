@@ -1,178 +1,116 @@
-# 独立 Chat Agent 集成：需求目标
+# 独立 Chat Agent：需求说明
 
-## 1. 当前情况
+## 1. 背景
 
-AI-Nexus 当前在同一个进程中实现：
+AI-Nexus 当前已经具备模型凭证管理、对话与消息管理、流式回复、历史上下文、用量记录、
+对话预设和自动标题等基础能力。
 
-- `/chat/*` HTTP 路由和 SSE；
-- Provider Credential 的加密存储；
-- Conversation、Message、Preset 的数据库访问；
-- OpenAI、Anthropic、Gemini 和自定义 OpenAI Compatible Provider；
-- 历史消息组装、模型流式调用和标题生成。
+这些功能目前都运行在主系统内部。随着后续增加工具调用、记忆和更完整的 Agent 能力，
+对话模块会变得更复杂，也更容易影响用户、邮件和图片生成等其他业务。因此我们希望把它
+拆分为独立 Chat Agent。
 
-现有实现已经具备清晰的业务模块，但仍与主系统存在以下耦合：
+## 2. 目标
 
-- Chat Service 和 DAO 直接依赖 `gin.Context` 与全局数据库；
-- 对话表、用户表和其他核心表位于同一数据库；
-- AI-Nexus 持有 Provider Credential 的解密能力；
-- 长时间 SSE 和模型请求与核心登录、用户接口运行在同一个进程；
-- 标题生成使用不可恢复、不可观测的进程内 goroutine；
-- 没有独立的 Agent Run、请求幂等和同一对话并发控制；
-- 流式中途失败可能同时产生 error、`[DONE]` 和部分助手消息，终态不明确。
+- Chat Agent 可以独立开发、部署和扩展；
+- AI-Nexus 继续作为客户端的统一入口；
+- 第一阶段尽量保持现有对话使用方式不变；
+- Chat Agent 故障时不影响 AI-Nexus 的其他业务；
+- 为后续工具调用、记忆和知识检索预留发展空间。
 
-## 2. 建设目标
+## 3. 职责边界
 
-建设独立 Chat Agent Service，并保持客户端继续通过 AI-Nexus 的 `/chat/*` 接口
-访问。
+AI-Nexus 主要负责：
 
-AI-Nexus 负责：
+- 确认用户身份和登录状态；
+- 接收客户端的对话请求；
+- 完成通用校验、访问控制和请求追踪；
+- 将请求转交给 Chat Agent；
+- 把普通结果或流式结果返回客户端；
+- 在 Chat Agent 不可用时提供清晰错误。
 
-- 验证外部 JWT 和 Redis Session；
-- 执行统一入口限流、CORS、RequestID 和安全中间件；
-- 将 HTTP JSON 转换为内部 Unary gRPC；
-- 将 gRPC Server Stream 转换为 SSE；
-- 签发短时内部身份令牌；
-- 在 Chat Agent 不可用时隔离故障，不影响核心服务其他接口。
+Chat Agent 主要负责：
 
-Chat Agent Service 负责：
+- 管理用户的模型服务凭证；
+- 管理对话、消息和预设；
+- 组织对话历史和模型上下文；
+- 调用用户选择的模型并持续返回内容；
+- 记录一次对话执行的状态、结果、用量和失败原因；
+- 处理取消、中断、失败和自动标题等对话内部任务；
+- 承载后续新增的 Agent 能力。
 
-- Provider Credential 的加密、掩码、轮换和归属校验；
-- Conversation、Message、Preset 和 Agent Run；
-- 上下文构建和并发控制；
-- Provider 路由、模型调用和流式事件；
-- Token Usage、首 Token 延迟和运行终态；
-- 标题生成等内部后台任务；
-- 后续 Tool、Memory 和 Agent Loop 扩展。
+Chat Agent 不负责用户注册、登录、邮件、图片生成等核心业务。拆分完成后，AI-Nexus
+也不应继续维护另一套对话数据或直接调用模型。
 
-## 3. 功能需求
+## 4. 核心需求
 
-### 3.1 外部接口兼容
+### 4.1 模型凭证
 
-第一阶段保留现有 HTTP 路径和主要 JSON 字段：
+- 用户可以添加、修改、停用和删除自己的模型凭证；
+- 查询时只能看到脱敏结果，完整密钥不能出现在响应和日志中；
+- 用户只能使用自己的凭证；
+- 自定义模型服务地址不能访问系统内网或敏感地址。
 
-```text
-/chat/api-keys
-/chat/conversations
-/chat/conversations/{conv_id}
-/chat/conversations/{conv_id}/messages
-/chat/presets
-```
+### 4.2 对话和消息
 
-AI-Nexus Controller 由本地业务实现改为 Chat Agent gRPC 网关适配器。前端无需知道
-Chat Agent 地址，也不直接持有内部凭证。
+- 用户可以创建、查看、修改和删除自己的对话；
+- 用户只能操作属于自己的对话、消息、凭证和预设；
+- 消息顺序必须稳定，删除对话不能误删其他用户的数据；
+- 对消息长度、历史数量和整体上下文设置合理限制。
 
-### 3.2 数据所有权
+### 4.3 对话执行
 
-Chat Agent 独占写入：
+- 用户发送消息后，需要有一次可以追踪的执行记录；
+- 重复提交同一请求时，不能重复调用模型或重复保存消息；
+- 同一对话的并发生成不能造成历史和消息顺序错乱；
+- 模型内容需要持续返回给用户；
+- 用户取消或断开后，应停止不再需要的模型调用；
+- 每次执行最终只能是完成、失败或取消中的一种；
+- 中途失败产生的部分内容不能被记录成正常完整回答。
 
-- Provider Credential；
-- Conversation；
-- Message；
-- Preset；
-- Agent Run；
-- 上下文摘要、Tool Call 等后续数据。
+### 4.4 上下文、用量和后台任务
 
-Chat Agent 不查询 AI-Nexus 的 `users`、Session 或钱包表。`user_id` 是由可信内部
-身份传递的外部主体标识。
+- 支持系统提示词和最近对话历史；
+- 上下文过长时要有稳定处理方式；
+- 记录实际使用的模型和可获得的用量信息；
+- 区分凭证错误、模型错误、超时、限流和服务不可用；
+- 自动标题失败不能影响主对话；
+- 服务重启后，未完成执行和后台任务不能永久停留在未知状态。
 
-### 3.3 Provider Credential
+## 5. 数据迁移
 
-- Credential 必须加密存储，响应只返回掩码；
-- 密文包含密钥版本，支持后续轮换；
-- 明文不得进入日志、Trace、错误详情或指标标签；
-- Credential、Conversation 的关联必须属于同一用户；
-- 自定义 Provider Endpoint 必须防御 SSRF、重定向到内网和 DNS Rebinding；
-- 删除仍被 Conversation 使用的 Credential 时应拒绝，或采用明确的停用语义。
+- 现有模型凭证、对话、消息和预设需要迁移到 Chat Agent；
+- 迁移不能丢失资源归属、消息顺序和凭证可用性；
+- 正式切换时避免两个系统同时修改同一份对话数据；
+- 切换前需要备份，并准备失败后的恢复方式；
+- 稳定后停止 AI-Nexus 对旧对话数据的读写。
 
-### 3.4 Agent Run
+## 6. 第一阶段范围
 
-每次发送消息创建唯一 Agent Run：
+第一阶段先迁移和稳定现有能力：
 
-- AI-Nexus 或客户端提供 `request_id` 作为业务幂等键；
-- 同一用户下 `request_id` 唯一；
-- Run 记录 Provider、模型、Token Usage、错误和时间指标；
-- 同一 Conversation 同时最多一个活跃 Run；
-- 用户断开连接时取消信号必须传播到 Provider；
-- 已输出 Token 后不得透明重试整个模型请求；
-- 部分输出必须标记为 partial，不能伪装成正常完成。
+- 模型凭证管理；
+- 对话、消息和预设管理；
+- 流式模型回复；
+- 上下文组织和用量记录；
+- 自动标题；
+- 执行状态、取消、重复请求保护和资源归属保护；
+- 与现有客户端接口兼容。
 
-### 3.5 流式协议
+第一阶段暂不要求多 Agent、长期记忆、知识库、MCP、完整工具平台或图片生成工具。
+这些能力应在基础对话链路稳定后分别设计。
 
-`StreamMessage` 使用 gRPC Server Streaming，必须区分：
+## 7. 验收结果
 
-- Run 已接受；
-- 文本增量；
-- Usage 更新；
-- 正常完成；
-- 失败；
-- 取消；
-- 心跳。
+- 现有对话主要功能可以正常使用；
+- AI-Nexus 不再直接调用模型或写入新的对话数据；
+- Chat Agent 故障不会导致 AI-Nexus 其他业务不可用；
+- 重复请求和并发请求不会造成重复调用或消息错乱；
+- 完成、失败和取消状态清楚；
+- 用户不能访问其他用户的资源；
+- 模型密钥不会泄露；
+- 现有数据迁移后通过数量、归属关系和抽样可用性检查。
 
-同一 Stream 内事件包含单调递增的 `sequence`。正常完成、失败和取消只能出现一个
-终态。
+## 8. 后续再决定的内容
 
-### 3.6 上下文管理
-
-- V1 支持 System Prompt 和最近消息窗口；
-- 必须限制单条消息长度、历史消息数量和最大请求体；
-- 不得仅依赖客户端传入的 `max_tokens`；
-- 后续支持按模型上下文 Token Budget 裁剪和摘要；
-- 同一 Conversation 的并发请求不得读取相同旧历史后交错写入。
-
-### 3.7 标题生成
-
-- 首轮对话完成后可以异步生成标题；
-- 标题任务必须有状态、并发限制和超时；
-- Worker 执行时重新加载 Credential，不在 goroutine 中长期捕获明文 Key；
-- 标题失败不影响主对话完成；
-- 标题更新必须带 Conversation owner 或内部任务归属校验。
-
-## 4. 可靠性需求
-
-- Chat Agent 不可用时 `/chat/*` 返回 `503`，AI-Nexus 其他接口继续工作；
-- gRPC 建连不得成为 AI-Nexus 整体启动的强依赖；
-- Provider 超时、限流、认证失败使用稳定错误分类；
-- 只在已知请求未开始或 Provider 支持幂等时进行安全重试；
-- 服务关闭时停止接收新 Run，并在宽限期内取消或完成现有 Stream；
-- 进程崩溃后，遗留 `STREAMING` Run 可被 Recovery Job 标记为失败并释放对话占用；
-- 日志、指标和 Trace 贯通 `request_id`、`run_id`、`conversation_id`。
-
-## 5. 安全需求
-
-- 外部用户 JWT 只由 AI-Nexus 验证；
-- 内部调用使用 mTLS 和短时、受众受限的内部 JWT；
-- 内部 JWT 推荐使用 Ed25519/ES256 等非对称签名；
-- Chat Agent 只信任经过服务身份认证的 AI-Nexus；
-- Chat Agent 每次资源操作都校验 `resource.user_id == principal.sub`；
-- 不直接信任客户端可伪造的 `X-User-ID`；
-- Provider 错误必须脱敏后再返回；
-- 自定义 Endpoint 默认只允许 HTTPS，并禁止访问内网和云 Metadata 地址。
-
-## 6. 非目标
-
-V1 不实现：
-
-- 多 Agent 协作；
-- RAG 和向量数据库；
-- 长期语义记忆；
-- MCP；
-- Image Generation Tool；
-- 流式断点续传；
-- 自动跨 Provider 切换；
-- 平台统一计费；
-- 客户端直接访问 Chat Agent。
-
-## 7. 验收标准
-
-- 现有 Chat HTTP CRUD 和 SSE 流程无功能回归；
-- AI-Nexus 不再直接读写 Chat 表或解密 Provider Credential；
-- Chat Agent 不访问 AI-Nexus Core 数据库；
-- 同一 `request_id` 不会重复调用模型或重复写入用户消息；
-- 同一 Conversation 的并发第二个 Run 被明确拒绝；
-- 客户端断开能够取消下游 Provider 请求；
-- 正常、失败、取消三个终态互斥；
-- 部分流失败不会被记录为正常完成；
-- 非资源所有者无法读取、修改或删除 Conversation、Credential、Preset 和 Run；
-- 自定义 Endpoint 无法访问 loopback、私网、link-local 和 Metadata 地址；
-- Chat Agent 故障不会使 AI-Nexus 的用户、认证等核心接口下线；
-- 数据迁移完成后，记录数量、归属关系和 Credential 解密抽检通过。
+本需求文档不指定技术栈、通信方式、数据存储、流式协议和部署方案。后续开发会话需要
+先调研当前代码，再提出总体方案，双方确认后才形成正式协议和开发任务。
