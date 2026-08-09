@@ -18,7 +18,7 @@ func InitUserRoutes(r *gin.Engine, us *user_service.Service) {
 		user.POST("/register", uc.Register)
 		user.POST("/login", uc.Login)
 		user.GET("/logout", middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.Logout)
-		user.GET("/get-userinfo", middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.GetUserInfo)
+		user.GET("/get-userinfo", middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), uc.GetUserInfo)
 		user.GET("/getall-userinfo", uc.GetAllUsers)
 		user.PUT("/update-userinfo", middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.UpdateUserInfo)
 		user.POST("/reset-password", middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.ResetUserPassword)
