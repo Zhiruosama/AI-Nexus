@@ -21,7 +21,7 @@ type Config struct {
 	RateLimit     RateLimitConfig     `yaml:"ratelimit"`
 	Idempotency   IdempotencyConfig   `yaml:"idempotency"`
 	Deduplication DeduplicationConfig `yaml:"deduplication"`
-	GRPCClient    GRPCClientConfig    `yaml:"grpcclient"`
+	Mail          MailConfig          `yaml:"mail"`
 	RabbitMQ      RabbitMQConfig      `yaml:"rabbitmq"`
 	Chat          ChatConfig          `yaml:"chat"`
 }
@@ -65,10 +65,27 @@ type DeduplicationConfig struct {
 	LockDuration time.Duration `yaml:"lockduration"`
 }
 
-// GRPCClientConfig 结构体用于配置gRPC连接
-type GRPCClientConfig struct {
-	ServerAddress  string        `yaml:"serveraddress"`
-	DefaultTimeout time.Duration `yaml:"defaulttimeout"`
+// MailConfig 定义 Mail Service 客户端、投递回调和验证码策略。
+type MailConfig struct {
+	Address                string        `yaml:"address"`
+	Timeout                time.Duration `yaml:"timeout"`
+	AllowInsecure          bool          `yaml:"allowinsecure"`
+	TLSCAFile              string        `yaml:"tlscafile"`
+	TLSServerName          string        `yaml:"tlsservername"`
+	CallbackAddress        string        `yaml:"callbackaddress"`
+	CallbackAllowInsecure  bool          `yaml:"callbackallowinsecure"`
+	CallbackTLSCertFile    string        `yaml:"callbacktlscertfile"`
+	CallbackTLSKeyFile     string        `yaml:"callbacktlskeyfile"`
+	SenderIdentityKey      string        `yaml:"senderidentitykey"`
+	Locale                 string        `yaml:"locale"`
+	VerificationTTL        time.Duration `yaml:"verificationttl"`
+	DispatchDeadline       time.Duration `yaml:"dispatchdeadline"`
+	PendingTTL             time.Duration `yaml:"pendingttl"`
+	Cooldown               time.Duration `yaml:"cooldown"`
+	MaxAttempts            int           `yaml:"maxattempts"`
+	ReconcileInterval      time.Duration `yaml:"reconcileinterval"`
+	HMACSecret             string        `yaml:"hmacsecret"`
+	EmailFingerprintSecret string        `yaml:"emailfingerprintsecret"`
 }
 
 // RabbitMQConfig 定义 RabbitMQ 相关配置

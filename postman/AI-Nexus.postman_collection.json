@@ -18,8 +18,8 @@
       "name": "User",
       "item": [
         {
-          "name": "Send verification code (register/reset)",
-          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/x-www-form-urlencoded"}], "body": {"mode": "urlencoded", "urlencoded": [{"key": "email", "value": "{{email}}", "type": "text"}, {"key": "purpose", "value": "1", "description": "1=register, 2=reset password; current implementation rejects 3", "type": "text"}]}, "url": "{{base_url}}/user/send-code"}
+          "name": "Send verification code",
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/x-www-form-urlencoded"}, {"key": "Idempotency-Key", "value": "{{$guid}}", "description": "Reuse the same UUID only when retrying one logical send"}], "body": {"mode": "urlencoded", "urlencoded": [{"key": "email", "value": "{{email}}", "type": "text"}, {"key": "purpose", "value": "1", "description": "1=register, 2=reset password, 3=login", "type": "text"}]}, "url": "{{base_url}}/user/send-code"}
         },
         {
           "name": "Register", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"nickname\": \"{{nickname}}\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"repeat_password\": \"{{password}}\",\n  \"verify_code\": \"{{verify_code}}\",\n  \"purpose\": \"1\"\n}"}, "url": "{{base_url}}/user/register"}

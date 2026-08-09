@@ -2,6 +2,7 @@
 package user
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -14,9 +15,9 @@ import (
 	user_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/user"
 	user_vo "github.com/Zhiruosama/ai_nexus/internal/domain/vo/user"
 	"github.com/Zhiruosama/ai_nexus/internal/middleware"
-	"github.com/Zhiruosama/ai_nexus/internal/pkg/rdb"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/ws"
 	user_service "github.com/Zhiruosama/ai_nexus/internal/service/user"
+	"github.com/Zhiruosama/ai_nexus/internal/verification"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
@@ -38,7 +39,6 @@ const (
 	emailRegex     = `^[^@\s]+@[^@\s]+\.[^@\s]+$`
 	charset        = "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "0123456789"
 	nickNamePrefix = "用户_"
-	codePrefix     = "code_"
 )
 
 var (
@@ -66,9 +66,6 @@ var (
 
 // SendEmailCode 发送验证码
 func (uc *Controller) SendEmailCode(ctx *gin.Context) {
-	rdbClient := rdb.Rdb
-	rCtx := rdb.Ctx
-
 	email := ctx.DefaultPostForm("email", "")
 	purposeStr := ctx.DefaultPostForm("purpose", "")
 
@@ -88,17 +85,8 @@ func (uc *Controller) SendEmailCode(ctx *gin.Context) {
 		return
 	}
 
-	_, err := rdbClient.Get(rCtx, codePrefix+email).Result()
-	if err == nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    middleware.VerifyCodeExist,
-			"message": "varify code already exists",
-		})
-		return
-	}
-
 	purpose, err := strconv.Atoi(purposeStr)
-	if err != nil || (purpose != 1 && purpose != 2) {
+	if err != nil || (purpose != 1 && purpose != 2 && purpose != 3) {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    middleware.PurposeInvalid,
 			"message": "Invalid purpose value",
@@ -107,22 +95,41 @@ func (uc *Controller) SendEmailCode(ctx *gin.Context) {
 	}
 
 	dto := &user_dto.SendEmailCode{
-		Purpose: purpose,
-		Email:   email,
+		Purpose:   purpose,
+		Email:     email,
+		RequestID: ctx.GetHeader("Idempotency-Key"),
 	}
 
-	err = uc.UserService.SendEmailCode(ctx, dto)
+	requestID, err := uc.UserService.SendEmailCode(ctx, dto)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    middleware.RPCSendCodeFailed,
-			"message": "Verification code failed to send",
+		statusCode, errorCode, message := sendCodeHTTPError(err)
+		ctx.JSON(statusCode, gin.H{
+			"code":       errorCode,
+			"message":    message,
+			"request_id": requestID,
 		})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    http.StatusOK,
-		"message": "send email successful",
+	ctx.JSON(http.StatusAccepted, gin.H{
+		"code":       http.StatusAccepted,
+		"message":    "verification email accepted",
+		"request_id": requestID,
 	})
+}
+
+func sendCodeHTTPError(err error) (int, int, string) {
+	switch {
+	case errors.Is(err, verification.ErrCooldown):
+		return http.StatusTooManyRequests, middleware.VerifyCodeExist, "verification code request is too frequent"
+	case errors.Is(err, verification.ErrInvalidPurpose), errors.Is(err, verification.ErrInvalidRequestID):
+		return http.StatusBadRequest, middleware.PurposeInvalid, err.Error()
+	case errors.Is(err, verification.ErrChallengeConflict), err.Error() == "user exists":
+		return http.StatusConflict, middleware.RPCSendCodeFailed, err.Error()
+	case err.Error() == "user not exists":
+		return http.StatusBadRequest, middleware.RPCSendCodeFailed, err.Error()
+	default:
+		return http.StatusServiceUnavailable, middleware.RPCSendCodeFailed, "verification email could not be accepted"
+	}
 }
 
 // Register 用户注册

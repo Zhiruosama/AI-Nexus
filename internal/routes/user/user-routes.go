@@ -9,13 +9,12 @@ import (
 )
 
 // InitUserRoutes 初始化用户模块的路由
-func InitUserRoutes(r *gin.Engine) {
-	us := user_service.NewService()
+func InitUserRoutes(r *gin.Engine, us *user_service.Service) {
 	uc := user_controller.NewController(us)
 
 	user := r.Group("/user")
 	{
-		user.POST("/send-code", uc.SendEmailCode)
+		user.POST("/send-code", middleware.RateLimitingMiddleware(), uc.SendEmailCode)
 		user.POST("/register", uc.Register)
 		user.POST("/login", uc.Login)
 		user.GET("/logout", middleware.AuthMiddleware(), middleware.RateLimitingMiddleware(), middleware.DeduplicationMiddleware(), uc.Logout)

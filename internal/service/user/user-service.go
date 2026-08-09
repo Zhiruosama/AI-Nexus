@@ -19,12 +19,12 @@ import (
 	user_dto "github.com/Zhiruosama/ai_nexus/internal/domain/dto/user"
 	user_query "github.com/Zhiruosama/ai_nexus/internal/domain/query/user"
 	user_vo "github.com/Zhiruosama/ai_nexus/internal/domain/vo/user"
-	"github.com/Zhiruosama/ai_nexus/internal/grpc"
 	"github.com/Zhiruosama/ai_nexus/internal/middleware"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/logger"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/rdb"
 	"github.com/Zhiruosama/ai_nexus/internal/pkg/session"
+	"github.com/Zhiruosama/ai_nexus/internal/verification"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -32,60 +32,47 @@ import (
 
 // Service 对应 user 模块的 Service 结构
 type Service struct {
-	UserDao      *user_dao.DAO
-	SessionStore session.Store
+	UserDao             *user_dao.DAO
+	SessionStore        session.Store
+	VerificationService *verification.Service
 }
 
 // NewService 对应 user 模块的 Service 工厂方法
-func NewService() *Service {
+func NewService(verificationService *verification.Service) *Service {
 	return &Service{
-		UserDao:      &user_dao.DAO{},
-		SessionStore: session.NewRedisStore(rdb.Rdb),
+		UserDao:             &user_dao.DAO{},
+		SessionStore:        session.NewRedisStore(rdb.Rdb),
+		VerificationService: verificationService,
 	}
 }
 
 const (
-	codePrefix       = "code_"
 	infoPrefix       = "info_"
 	allinfoKey       = "allInfoForUsers"
 	allinfoKeyPrefix = "allInfoForUsers_"
 )
 
 // SendEmailCode 发送邮箱服务
-func (s *Service) SendEmailCode(ctx *gin.Context, dto *user_dto.SendEmailCode) error {
-	do := &user_do.TableUserVerificationCodesDO{}
-
-	do.Email = dto.Email
-	_, _, code, err := grpc.GetVerificationCode(dto.Email)
+func (s *Service) SendEmailCode(ctx *gin.Context, dto *user_dto.SendEmailCode) (string, error) {
+	purpose, err := verification.PurposeFromCode(dto.Purpose)
 	if err != nil {
-		logger.Error(ctx, "RPC send code error: %s", err.Error())
-		return err
+		return "", err
 	}
-	do.Code = code
-	do.Purpose = int8(dto.Purpose)
-
-	err = s.UserDao.SendEmailCode(ctx, do)
+	exists, err := s.UserDao.CheckUserExists(ctx, dto.Email)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	if purpose == verification.PurposeRegister && exists {
+		return "", fmt.Errorf("user exists")
+	}
+	if purpose != verification.PurposeRegister && !exists {
+		return "", fmt.Errorf("user not exists")
+	}
+	return s.VerificationService.Send(ctx.Request.Context(), dto.RequestID, dto.Email, purpose)
 }
 
 // Register 注册服务
 func (s *Service) Register(ctx *gin.Context, dto *user_dto.RegisterRequest) error {
-	rdbClient := rdb.Rdb
-	rCtx := rdb.Ctx
-
-	code, err := rdbClient.Get(rCtx, codePrefix+dto.Email).Result()
-	if err == redis.Nil {
-		logger.Error(ctx, "Verify email code error: %s", err.Error())
-		return fmt.Errorf("the verification code has expired")
-	}
-
-	if code != dto.VerifyCode {
-		return fmt.Errorf("verify code error")
-	}
-
 	// 检查用户是否存在
 	exists, err := s.UserDao.CheckUserExists(ctx, dto.Email)
 	if err != nil {
@@ -94,6 +81,9 @@ func (s *Service) Register(ctx *gin.Context, dto *user_dto.RegisterRequest) erro
 	}
 	if exists {
 		return fmt.Errorf("user exists")
+	}
+	if err = s.VerificationService.VerifyAndConsume(ctx.Request.Context(), dto.Email, verification.PurposeRegister, dto.VerifyCode); err != nil {
+		return err
 	}
 
 	passwordHash, err := pkg.HashPassword(dto.PassWord)
@@ -114,13 +104,6 @@ func (s *Service) Register(ctx *gin.Context, dto *user_dto.RegisterRequest) erro
 	err = s.UserDao.CreateUser(ctx, userDO)
 	if err != nil {
 		logger.Error(ctx, "Create user error: %s", err.Error())
-		return err
-	}
-
-	// 注册成功清除redis
-	_, err = rdbClient.Del(rCtx, codePrefix+dto.Email).Result()
-	if err != nil {
-		logger.Error(ctx, "Delete verify code error: %s", err.Error())
 		return err
 	}
 
@@ -188,19 +171,6 @@ func (s *Service) LoginWithEmailPassword(ctx *gin.Context, req *user_dto.LoginRe
 
 // LoginWithEmailVerifyCode 邮箱验证码登录
 func (s *Service) LoginWithEmailVerifyCode(ctx *gin.Context, req *user_dto.LoginRequest, vo *user_vo.LoginVO) error {
-	rdbClient := rdb.Rdb
-	rCtx := rdb.Ctx
-
-	code, err := rdbClient.Get(rCtx, codePrefix+req.Email).Result()
-	if err != nil {
-		logger.Error(ctx, "Get verify code error: %s", err.Error())
-		return err
-	}
-
-	if code != req.VerifyCode {
-		return fmt.Errorf("email verification code error")
-	}
-
 	uuid, _, err := s.UserDao.GetPasswordByEmail(ctx, req.Email)
 	if err != nil {
 		return err
@@ -208,14 +178,12 @@ func (s *Service) LoginWithEmailVerifyCode(ctx *gin.Context, req *user_dto.Login
 	if uuid == "" {
 		return fmt.Errorf("user not exists")
 	}
-
-	err = s.UserDao.UpdateLoginTime(ctx, uuid)
-	if err != nil {
+	if err = s.VerificationService.VerifyAndConsume(ctx.Request.Context(), req.Email, verification.PurposeLogin, req.VerifyCode); err != nil {
 		return err
 	}
 
-	if err = rdbClient.Del(rCtx, codePrefix+req.Email).Err(); err != nil {
-		logger.Error(ctx, "Remove code in redis error: %s", err.Error())
+	err = s.UserDao.UpdateLoginTime(ctx, uuid)
+	if err != nil {
 		return err
 	}
 
@@ -543,9 +511,6 @@ func (s *Service) DestroyUser(ctx *gin.Context) error {
 
 // ResetUserPassword 更新用户密码
 func (s *Service) ResetUserPassword(ctx *gin.Context, req *user_dto.UpdatePasswordRequest) error {
-	rdbClient := rdb.Rdb
-	rCtx := rdb.Ctx
-
 	uuid, err := s.UserDao.GetUserIDByEmail(ctx, req.Email)
 	if err != nil {
 		return err
@@ -555,15 +520,8 @@ func (s *Service) ResetUserPassword(ctx *gin.Context, req *user_dto.UpdatePasswo
 		return fmt.Errorf("user not exist")
 	}
 
-	code, err := rdbClient.Get(rCtx, codePrefix+req.Email).Result()
-	if err != nil {
-		logger.Error(ctx, "get code from redis error: %s", err.Error())
+	if err = s.VerificationService.VerifyAndConsume(ctx.Request.Context(), req.Email, verification.PurposeResetPassword, req.VerifyCode); err != nil {
 		return err
-	}
-
-	if code != req.VerifyCode {
-		logger.Error(ctx, "verify code is not correct: %s", req.VerifyCode)
-		return fmt.Errorf("verification code is incorrect")
 	}
 
 	newPasswordHash, err := pkg.HashPassword(req.NewPassWord)
@@ -580,12 +538,6 @@ func (s *Service) ResetUserPassword(ctx *gin.Context, req *user_dto.UpdatePasswo
 	err = s.UserDao.ResetUserPassword(ctx, uuid, newPasswordHash)
 	if err != nil {
 		logger.Error(ctx, "ResetUserPassword error: %s", err.Error())
-		return err
-	}
-
-	_, err = rdbClient.Del(rCtx, codePrefix+req.Email).Result()
-	if err != nil {
-		logger.Error(ctx, "Delete verify code error: %s", err.Error())
 		return err
 	}
 

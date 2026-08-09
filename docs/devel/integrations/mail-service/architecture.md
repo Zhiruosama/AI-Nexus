@@ -10,11 +10,12 @@
 AI-Nexus
   ├── 业务规则、限流
   ├── 生成验证码
-  ├── Redis 验证码状态
+  ├── MySQL 验证码状态与回调 Journal
+  ├── Redis 发送冷却窗口
   ├── 验证和一次性消费
   └── gRPC Callback Server
           │
-          │ gRPC SubmitEmail
+          │ gRPC DeliveryService.SubmitEmail
           ▼
 Mail Service
   ├── 幂等受理、任务数据库
@@ -25,7 +26,7 @@ Mail Service
   ├── 重试、熔断、DLQ
   └── Callback Outbox
           │
-          └── gRPC ReportDelivery ──→ AI-Nexus
+          └── gRPC ReportDeliveryEvent ──→ AI-Nexus
 ```
 
 两个系统只通过协议交换命令和状态，不共享 Redis、数据库表或内部消息队列。
@@ -37,13 +38,13 @@ Mail Service
 2. AI-Nexus 校验邮箱、purpose、账号状态和发送频率
 3. AI-Nexus 生成 request_id 和验证码
 4. AI-Nexus 保存验证码 HMAC 摘要，状态为 PENDING_DISPATCH
-5. AI-Nexus 调用 MailDispatchService.SubmitEmail
+5. AI-Nexus 调用 DeliveryService.SubmitEmail
 6. Mail Service 以 request_id 幂等持久化任务和 Outbox
 7. Mail Service 返回 ACCEPTED 或 DUPLICATE
 8. AI-Nexus 向客户端返回 202 Accepted 和 request_id
 9. Mail Service 异步入队、渲染并调用供应商
 10. 供应商接受邮件后，Mail Service 持久化状态和回调 Outbox
-11. Mail Service 调用 ReportDelivery(PROVIDER_ACCEPTED)
+11. Mail Service 调用 ReportDeliveryEvent(PROVIDER_ACCEPTED)
 12. AI-Nexus 幂等激活验证码并设置有效期
 ```
 
@@ -88,7 +89,7 @@ PROVIDER_ACCEPTED
 SMTP 或供应商返回成功通常只表示“供应商接受了邮件”，不等价于用户已经在收件箱
 看到邮件。因此 V1 使用 `PROVIDER_ACCEPTED`，不笼统命名为 `SENT_SUCCESS`。
 
-## 5. Redis 模型
+## 5. 本地数据模型
 
 为避免在 Redis Key 中暴露邮箱，先计算：
 
@@ -96,45 +97,20 @@ SMTP 或供应商返回成功通常只表示“供应商接受了邮件”，不
 email_fingerprint = HMAC-SHA256(key_fingerprint_secret, normalized_email)
 ```
 
-验证码主记录：
+MySQL `email_verification_challenges` 保存：
 
 ```text
-verify:challenge:{purpose}:{email_fingerprint}
+request_id、message_id、email_fingerprint、purpose、code_digest、state、
+failed_attempts、latest_delivery_status、latest_sequence 与生命周期时间
 ```
 
-建议字段：
+MySQL `email_delivery_events` 以 `event_id` 为主键保存回调 Journal，并按
+`message_id + sequence` 判断乱序。事件去重、序列校验和验证码状态转换在同一个事务内完成。
 
-```json
-{
-  "request_id": "UUID",
-  "code_digest": "HMAC-SHA256",
-  "purpose": "REGISTER",
-  "status": "PENDING_DISPATCH",
-  "failed_attempts": 0,
-  "last_delivery_sequence": 0,
-  "created_at": "RFC3339",
-  "active_at": "",
-  "expires_at": ""
-}
-```
-
-回调查找索引：
+Redis 只保存发送冷却窗口：
 
 ```text
-verify:request:{request_id}
-  -> purpose + email_fingerprint
-```
-
-发送冷却：
-
-```text
-verify:cooldown:{purpose}:{email_fingerprint}
-```
-
-回调事件幂等：
-
-```text
-mail:callback:event:{event_id}
+verification:cooldown:{purpose}:{email_fingerprint}
 ```
 
 验证码摘要建议为：
@@ -142,7 +118,7 @@ mail:callback:event:{event_id}
 ```text
 HMAC-SHA256(
   verification_secret,
-  normalized_email || purpose || request_id || code
+  request_id || 0x00 || code
 )
 ```
 
@@ -160,7 +136,7 @@ Mail Service 在 `dispatch_deadline` 之后不得继续发送验证码邮件。�
 
 ```text
 dispatch_deadline = requested_at + 2 分钟
-valid_for_seconds = 10 分钟
+valid_for_seconds = 5 分钟
 PENDING_DISPATCH 保留时间 = 15 分钟
 ```
 
@@ -176,7 +152,7 @@ PENDING_DISPATCH 保留时间 = 15 分钟
 ### 回调丢失
 
 Mail Service 持久化 Callback Outbox 并重试。AI-Nexus 同时可以对长时间停留在
-`PENDING_DISPATCH` 的记录调用 `GetEmailStatus` 对账。
+`PENDING_DISPATCH` 的记录调用 `GetEmail` 对账。
 
 ### AI-Nexus 暂时不可用
 

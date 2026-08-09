@@ -1,11 +1,9 @@
 SHELL := /bin/bash
 
-.PHONY: bootstrap infra-up infra-down infra-reset infra-status infra-logs run build vet test lint check
+.PHONY: bootstrap infra-up infra-down infra-reset infra-status infra-logs migrate-mail-integration test-mail-integration run build vet test lint check
 
 bootstrap:
-	@test -f .env || (cp .env.example .env && \
-		sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$$(openssl rand -hex 32)|" .env && \
-		sed -i "s|^CHAT_ENCRYPTION_KEY=.*|CHAT_ENCRYPTION_KEY=$$(openssl rand -hex 32)|" .env)
+	@./scripts/bootstrap-env.sh .env .env.example
 	@test -f configs/config.yaml || cp configs/config.example.yaml configs/config.yaml
 	@echo "Local configuration is ready. Add MODELSCOPE_API_KEY only when needed."
 
@@ -23,6 +21,15 @@ infra-status:
 
 infra-logs:
 	docker compose logs -f
+
+migrate-mail-integration: bootstrap
+	@set -a; source .env; set +a; \
+		docker compose exec -T mysql mysql -u root -p"$$MYSQL_ROOT_PASSWORD" "$$MYSQL_DATABASE" < migrations/mysql/20260809_email_verification.sql
+
+test-mail-integration: bootstrap migrate-mail-integration
+	@set -a; source .env; set +a; \
+		AI_NEXUS_TEST_MYSQL_DSN="$$MYSQL_USER:$$MYSQL_PASSWORD@tcp($$MYSQL_HOST:$$MYSQL_PORT)/$$MYSQL_DATABASE?charset=utf8mb4&parseTime=True&loc=Local" \
+		go test -tags=integration ./internal/verification -run '^TestStore' -count=1
 
 run: bootstrap
 	@set -a; source .env; set +a; go run ./cmd

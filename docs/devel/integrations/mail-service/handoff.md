@@ -1,5 +1,8 @@
 # AI-Nexus Mail Service：另一开发会话交接上下文
 
+> 历史说明：本文是独立服务开发前的初始草案，不是当前协议来源。V0.1 以
+> Email-Service 的 `mailservice.delivery.v1` Proto 和本目录 `implementation.md` 为准。
+
 以下内容用于直接交给负责独立 Mail Service 的开发会话。
 
 ---

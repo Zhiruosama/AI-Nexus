@@ -1,6 +1,6 @@
 # 独立邮件服务集成：需求目标
 
-## 1. 当前情况
+## 1. 改造前情况
 
 当前 AI-Nexus 通过 `VarifyService.GetVarifyCode(email)` 调用外部 gRPC 服务。外部
 服务生成验证码并把明文验证码返回给 AI-Nexus，随后 AI-Nexus 将其写入
@@ -74,7 +74,7 @@ Mail Service 负责：
 - 状态事件携带单调递增的 `sequence`，避免乱序事件覆盖新状态；
 - 回调失败时 Mail Service 必须重试；
 - 回调重试耗尽后进入回调死信队列；
-- AI-Nexus 可通过 `GetEmailStatus` 主动对账。
+- AI-Nexus 可通过 `GetEmail` 主动对账。
 
 ### 3.5 验证码激活
 

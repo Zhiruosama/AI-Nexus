@@ -5,8 +5,9 @@ import "mime/multipart"
 
 // SendEmailCode 请求发送验证码
 type SendEmailCode struct {
-	Purpose int    `json:"purpose" form:"purpose"`
-	Email   string `json:"email" form:"email"`
+	Purpose   int    `json:"purpose" form:"purpose"`
+	Email     string `json:"email" form:"email"`
+	RequestID string `json:"-" form:"-"`
 }
 
 // RegisterRequest 用户注册请求

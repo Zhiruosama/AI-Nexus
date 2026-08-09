@@ -1,6 +1,7 @@
 # 独立邮件服务集成：AI-Nexus 改造清单
 
-本文只描述主系统侧需要实施的工作。Mail Service 的内部实现由独立仓库负责。
+本文记录主系统侧的实施决策。V0.1 改造已经完成；运行和验收方式见
+[实施与联调手册](implementation.md)。Mail Service 的内部实现由独立仓库负责。
 
 ## 1. 当前代码替换范围
 
@@ -15,29 +16,26 @@
 
 旧协议和新协议不得长期并行共用同一验证码流程，避免出现两套数据源。
 
-## 2. 建议模块结构
+## 2. 实际模块结构
 
 ```text
 internal/
   verification/
     service.go          # 生成、激活、验证、消费
     store.go            # Store 接口
-    redis_store.go      # Redis 状态和原子脚本
-    limiter.go          # 邮箱/IP/purpose 限制
-    callback.go         # 投递状态处理
-    reconciler.go       # PENDING 状态对账
+    model.go            # purpose、状态和传输边界
+    store.go            # MySQL 状态、事件事务和一次性消费
+    service.go          # 生成、发送、验证、消费与对账
 
-  mailclient/
-    client.go           # SubmitEmail/GetEmailStatus
-    retry.go            # 同 request_id 有界重试
+  mailgateway/
+    client.go           # SubmitEmail/GetEmail 与同键恢复
 
   mailcallback/
     server.go           # gRPC Callback Server
-    auth.go             # TLS/mTLS 服务身份校验
 ```
 
-实际命名可以根据项目风格调整，但验证码领域逻辑不应继续堆积在 User Service 或
-Controller 中。
+MySQL 是验证码状态和回调 Journal 的权威数据源，Redis 只负责发送冷却。这样
+`event_id` 去重、`sequence` 防乱序、激活和终止可以在同一个数据库事务内完成。
 
 ## 3. 配置项
 
@@ -128,7 +126,7 @@ GET /user/email-verifications/{request_id}/status
 AI-Nexus 需要启动独立 gRPC Server，实现：
 
 ```text
-MailDeliveryCallbackService.ReportDelivery
+DeliveryEventReceiverService.ReportDeliveryEvent
 ```
 
 一次回调应原子完成：
@@ -174,23 +172,8 @@ VerifyAndConsume(email, purpose, code)
 
 ## 8. 数据库迁移
 
-当前 `user_verification_codes` 保存验证码明文。实施时有两个选择：
-
-### 方案 A：Redis 保存短期验证状态，MySQL 只保存脱敏审计
-
-删除或迁移 `code` 字段，保留：
-
-- `request_id`；
-- `email_fingerprint`；
-- `purpose`；
-- 最终状态；
-- 创建、激活和消费时间。
-
-### 方案 B：第一阶段停止写入该表
-
-验证码仅使用 Redis，后续再设计审计表。此方案实施较快，但可观测和审计能力较弱。
-
-不建议继续把验证码明文写入 MySQL。
+已选择 MySQL 权威状态方案：新增 `email_verification_challenges` 和
+`email_delivery_events`；应用不再读写明文表 `user_verification_codes`，新建数据库也不再创建它。
 
 数据库变更必须通过新增迁移完成，不能只修改 `configs/db.sql`，因为该初始化脚本不会
 自动更新已经存在的本地数据库。
@@ -225,12 +208,12 @@ VerifyAndConsume(email, purpose, code)
 
 ## 10. 推荐实施顺序
 
-1. 冻结 `ainexus.mail.v1` Proto；
+1. 删除旧 `ainexus.mail.v1` Proto；
 2. Mail Service 完成幂等受理、Outbox、队列和模拟供应商；
-3. AI-Nexus 实现 Verification Store 和安全验证码；
-4. AI-Nexus 接入 `SubmitEmail`；
-5. AI-Nexus 启动 Callback Server 并实现激活；
-6. 改造注册、登录和密码重置；
+3. AI-Nexus 实现 Verification Store 和安全验证码；（已完成）
+4. AI-Nexus 接入 `SubmitEmail/GetEmail`；（已完成）
+5. AI-Nexus 启动 Callback Server 并实现激活；（已完成）
+6. 改造注册、登录和密码重置；（已完成）
 7. 完成真实 SMTP Provider、重试、熔断和 DLQ；
 8. 增加对账、指标、告警和故障测试；
-9. 移除旧 `VarifyService` 和旧验证码数据路径。
+9. 移除旧 `VarifyService` 和旧验证码数据路径。（已完成）

@@ -24,7 +24,9 @@ WebSocket token is a query parameter (not an Authorization header).
 request and display the stream, but an SSE-capable client is easier for long
 conversations.
 
-The external gRPC verification service is not part of this repository; until
-it is running, `send-code` cannot issue a real verification code. Model
-creation and image generation also need a valid provider configuration, and
-image workers need `MODELSCOPE_API_KEY`.
+`send-code` now depends on Email-Service at `127.0.0.1:8080`; Nexus receives
+delivery callbacks on `:8081`. A successful request returns `202` and a
+`request_id`. Reuse the same `Idempotency-Key` header only when retrying the
+same logical send. Email-Service's Fake Provider validates the pipeline but
+does not deliver a readable email; use its explicitly configured SMTP mode for
+manual registration tests. Image workers still need `MODELSCOPE_API_KEY`.

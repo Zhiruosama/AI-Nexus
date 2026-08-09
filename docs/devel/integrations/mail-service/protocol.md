@@ -1,14 +1,20 @@
 # 独立邮件服务集成：gRPC V1 协议约定
 
-实际消息定义见 [mail-v1.proto](mail-v1.proto)。
+实际消息定义只以 Email-Service 仓库的以下文件为准：
+
+- `api/proto/mailservice/delivery/v1/common.proto`
+- `api/proto/mailservice/delivery/v1/delivery.proto`
+- `api/proto/mailservice/delivery/v1/event.proto`
+
+Go 包为 `github.com/Zhiruosama/Email-Service/gen/go/mailservice/delivery/v1`。
 
 ## 1. 版本与所有权
 
-- Protobuf package 固定为 `ainexus.mail.v1`；
+- Protobuf package 固定为 `mailservice.delivery.v1`；
 - V1 字段编号发布后不得复用；
 - 删除字段时使用 `reserved` 保留编号和名称；
-- Mail Service 实现 `MailDispatchService`；
-- AI-Nexus 实现 `MailDeliveryCallbackService`；
+- Mail Service 实现 `DeliveryService.SubmitEmail/GetEmail`；
+- AI-Nexus 实现 `DeliveryEventReceiverService.ReportDeliveryEvent`；
 - 两个仓库必须从同一份版本化 Proto 生成代码，不能分别手写同名结构。
 
 Proto 最终可以放入独立 contracts 仓库，也可以先由一个仓库作为唯一规范源。无论
@@ -29,7 +35,7 @@ Mail Service 只有完成以下操作后才能返回 `ACCEPTED`：
 `message_id`。相同 `request_id` 携带不同载荷时应返回
 `ALREADY_EXISTS`，不得覆盖旧任务。
 
-## 3. GetEmailStatus 语义
+## 3. GetEmail 语义
 
 该接口用于：
 
@@ -39,7 +45,7 @@ Mail Service 只有完成以下操作后才能返回 `ACCEPTED`：
 
 它不是高频轮询接口，应配置调用频率限制和超时。
 
-## 4. ReportDelivery 语义
+## 4. ReportDeliveryEvent 语义
 
 - `event_id` 是单个回调事件的幂等键；
 - `sequence` 是同一 `message_id` 下单调递增的状态序号；

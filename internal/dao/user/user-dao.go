@@ -16,18 +16,6 @@ import (
 type DAO struct {
 }
 
-// SendEmailCode 发送邮箱方法
-func (d *DAO) SendEmailCode(ctx *gin.Context, do *user_do.TableUserVerificationCodesDO) error {
-	sql := `INSERT INTO user_verification_codes (email, code, purpose) VALUES (?, ?, ?)`
-	result := db.GlobalDB.Exec(sql, do.Email, do.Code, do.Purpose)
-
-	if result.Error != nil {
-		logger.Error(ctx, "SendEmailCodeDAO insert error: %s", result.Error.Error())
-		return result.Error
-	}
-	return nil
-}
-
 // CheckUserExists 检查用户是否存在
 func (d *DAO) CheckUserExists(ctx *gin.Context, email string) (bool, error) {
 	var count int64

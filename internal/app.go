@@ -10,11 +10,12 @@ import (
 	routes_demo "github.com/Zhiruosama/ai_nexus/internal/routes/demo"
 	routes_image_generation "github.com/Zhiruosama/ai_nexus/internal/routes/image-generation"
 	routes_user "github.com/Zhiruosama/ai_nexus/internal/routes/user"
+	user_service "github.com/Zhiruosama/ai_nexus/internal/service/user"
 	"github.com/gin-gonic/gin"
 )
 
 // Run 运行一个 app 实例
-func Run() {
+func Run(userService *user_service.Service) {
 	// 初始化路由引擎
 	gin.SetMode(gin.ReleaseMode)
 	route := gin.New()
@@ -31,7 +32,7 @@ func Run() {
 
 	// 注册路由
 	routes_demo.InitDemoRoutes(route)
-	routes_user.InitUserRoutes(route)
+	routes_user.InitUserRoutes(route, userService)
 	routes_image_generation.InitImageGenerationRoutes(route)
 	routes_chat.InitChatRoutes(route)
 

@@ -25,9 +25,26 @@ idempotency:
 deduplication:
   lockduration: 5s
 
-grpcclient:
-  serveraddress: "${GRPC_SERVER_ADDRESS}"
-  defaulttimeout: ${GRPC_DEFAULT_TIMEOUT}
+mail:
+  address: "${MAIL_GRPC_ADDRESS}"
+  timeout: ${MAIL_GRPC_TIMEOUT}
+  allowinsecure: ${MAIL_GRPC_ALLOW_INSECURE}
+  tlscafile: "${MAIL_GRPC_TLS_CA_FILE}"
+  tlsservername: "${MAIL_GRPC_TLS_SERVER_NAME}"
+  callbackaddress: "${MAIL_CALLBACK_ADDRESS}"
+  callbackallowinsecure: ${MAIL_CALLBACK_ALLOW_INSECURE}
+  callbacktlscertfile: "${MAIL_CALLBACK_TLS_CERT_FILE}"
+  callbacktlskeyfile: "${MAIL_CALLBACK_TLS_KEY_FILE}"
+  senderidentitykey: "${MAIL_SENDER_IDENTITY_KEY}"
+  locale: "${MAIL_LOCALE}"
+  verificationttl: ${MAIL_VERIFICATION_TTL}
+  dispatchdeadline: ${MAIL_DISPATCH_DEADLINE}
+  pendingttl: ${MAIL_PENDING_TTL}
+  cooldown: ${MAIL_VERIFICATION_COOLDOWN}
+  maxattempts: ${MAIL_VERIFICATION_MAX_ATTEMPTS}
+  reconcileinterval: ${MAIL_RECONCILE_INTERVAL}
+  hmacsecret: "${VERIFICATION_HMAC_SECRET}"
+  emailfingerprintsecret: "${VERIFICATION_EMAIL_FINGERPRINT_SECRET}"
 
 rabbitmq:
   host: "${RABBITMQ_HOST}"
